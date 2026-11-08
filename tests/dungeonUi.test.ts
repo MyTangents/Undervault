@@ -88,6 +88,8 @@ describe('the dungeon screen', () => {
   test('when the 3D view cannot start, the notice goes to the message window', async () => {
     state.fail = true;
     await dungeon();
+    // the view starts on an animation frame, which jsdom paces at ~16ms
+    for (let i = 0; i < 50 && !words().includes('could not start'); i++) await new Promise((r) => setTimeout(r, 20));
     expect(words()).toContain('could not start the dungeon view');
     expect(document.querySelector('.toast')).toBeNull();
   });

@@ -272,6 +272,7 @@ export class CombatScreen {
       if (groupLiving(this.state.groups[this.selected]) === 0) this.selected = Math.max(0, this.livingGroups()[0] ?? 0);
       this.app.router.locked = false;
       this.co = new CombatOrders(this.state, this.lastOrders);
+      this.phase = 'orders'; // the round is over; a next round with nobody able to act must be allowed to start
       this.beginOrders();
       return;
     }

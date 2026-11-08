@@ -10,7 +10,7 @@ import { confirmBox, openList, promptName } from '../dialog';
 import { h } from '../dom';
 import { accentFor } from '../frame';
 import { className, raceName } from '../party';
-import { reorderParty } from '../reorder';
+import { renormalise, reorderParty } from '../reorder';
 import { placeLayout } from './layout';
 import type { PlaceLayout, PlaceScreen } from './layout';
 import { KEEPER_OF } from '../../portrait/people';
@@ -80,7 +80,7 @@ export function placeScreen(app: App): PlaceScreen {
     if (i === null) return;
     const m = members[i];
     if (!(await confirmBox(app.host, `Send ${m.name} away? They leave the party for good.`, accent))) return;
-    g.state.party = { ...g.state.party, members: g.state.party.members.filter((x) => x.id !== m.id) };
+    g.state.party = renormalise({ ...g.state.party, members: g.state.party.members.filter((x) => x.id !== m.id) });
     lay.msg.say(`${m.name} leaves.`);
   }
 

@@ -148,3 +148,18 @@ describe('the combat screen', () => {
     expect((a.combat as { round(): number }).round()).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe('review fixes', () => {
+  test('a second and third round where nobody can act still resolve (the fight never hangs)', async () => {
+    const { CombatOrders } = await import('../src/render/ui/combatOrders');
+    const a = await fight([['ledger-rat', 1]]);
+    vi.useFakeTimers();
+    const done = vi.spyOn(CombatOrders.prototype, 'done').mockReturnValue(true);
+    try {
+      // every round is one nobody is asked about: kick one off from the current prompt
+      (a.combat as any).advance();
+      await vi.advanceTimersByTimeAsync(6000);
+      expect((a.combat as { round(): number }).round()).toBeGreaterThanOrEqual(3);
+    } finally { done.mockRestore(); }
+  });
+});

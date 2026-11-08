@@ -7,6 +7,11 @@ import { h } from './dom';
 import { openList } from './dialog';
 import { accentFor } from './frame';
 
+/** Ranks follow slots: after anyone is removed from a party, the new front three must be marked front. */
+export function renormalise(p: Party): Party {
+  return p.members.length > 0 ? moveMember(p, p.members[0].id, 0) : p;
+}
+
 const rank = (i: number) => (i < FRONT_SIZE ? 'front' : 'back');
 
 /** Returns true when the order changed. Enter keeps the new order, Escape puts everything back as it was. */

@@ -3,6 +3,7 @@ import { raise } from '../../../core/town';
 import type { App } from '../app';
 import { confirmBox, openList } from '../dialog';
 import { accentFor } from '../frame';
+import { renormalise } from '../reorder';
 import { placeLayout } from './layout';
 import type { PlaceScreen } from './layout';
 import { KEEPER_OF } from '../../portrait/people';
@@ -42,7 +43,7 @@ export function placeScreen(app: App): PlaceScreen {
     if (m.ash && !(await confirmBox(app.host, `${m.name} is ash. The ash rite costs ${cost} gold, and if it fails they are gone for good. Go on?`, accentFor('temple')))) return;
     try {
       const after = raise(g.state.party, m.id, createRng(Date.now() & 0xffffff), m.ash ? 2 : 1);
-      g.state.party = after;
+      g.state.party = renormalise(after);
       const now = after.members.find((x) => x.id === m.id);
       if (!now) lay.msg.say(`${m.name} is gone for good. Sister Ottoline wept, and was told not to.`);
       else if (now.ash) lay.msg.say(`The rite failed, and ${m.name} came back as ash. It is the receipt.`);

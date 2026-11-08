@@ -43,6 +43,12 @@ export class KeyRouter {
     if (i >= 0) this.layers.length = i;
   }
 
+  /** Drops every layer above the named one, keeping it (used when a screen is replaced under open dialogues). */
+  trimTo(name: string): void {
+    const i = this.layers.map((l) => l.name).lastIndexOf(name);
+    if (i >= 0) this.layers.length = i + 1;
+  }
+
   top(): KeyLayer | undefined { return this.layers[this.layers.length - 1]; }
   clear(): void { this.layers = []; }
 

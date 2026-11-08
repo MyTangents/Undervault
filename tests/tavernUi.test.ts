@@ -229,3 +229,24 @@ describe('the character creator', () => {
     expect(document.querySelector('.dialog')).toBeNull();
   });
 });
+
+describe('review fixes', () => {
+  test('dismissing a front-rank member leaves ranks matching slots, so the one who moves up can fight', async () => {
+    const app = tavern(5);
+    press('d'); press('1'); await flush(); press('y'); await flush();
+    expect(app.game.state.party.members.map((m: any) => m.row).join()).toBe('front,front,front,back');
+  });
+
+  test('a click on the bar under an open dialogue does nothing, and replacing the screen closes the dialogue', async () => {
+    const app = tavern(5);
+    press('d');
+    expect(document.querySelector('.dialog')).not.toBeNull();
+    (document.querySelector('.cmdbar .cmd:last-child') as HTMLElement).click(); // L)eave, beneath the list
+    expect(app.townPlace).toBe('tavern');
+    app.dispatch({ type: 'toTitle' });
+    expect(document.querySelector('.dialog')).toBeNull();
+    expect(app.router.top().name).toBe('screen');
+    press('n'); // the title's N)ew game works at once: no dead keyboard
+    expect(app.flow.screen).toBe('town');
+  });
+});

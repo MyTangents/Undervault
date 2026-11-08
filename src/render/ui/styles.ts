@@ -48,6 +48,7 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .roster .rrow.dead .nm{text-decoration:line-through;opacity:.55}
 .roster .rrow .cls,.roster .rrow .st{opacity:.7}
 .roster .thumb canvas{display:block;width:32px;height:40px;image-rendering:pixelated}
+#ui-layer:not(:empty){position:fixed;inset:0;z-index:55}
 .dialog{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;min-width:min(26rem,92vw);max-width:92vw;max-height:84vh;overflow:auto;background:var(--bg2);border:3px double var(--accent);padding:1em 1.2em;box-shadow:0 0 0 100vmax #000a,0 0 30px #000}
 .dialog .dlg-title{color:var(--accent);letter-spacing:.08em;margin-bottom:.6em;border-bottom:1px solid var(--line);padding-bottom:.3em}
 .dialog .row{display:flex;gap:.6em;padding:.15em .3em;cursor:pointer;justify-content:flex-start}

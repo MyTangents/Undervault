@@ -80,6 +80,8 @@ export class App {
     document.body.append(layer);
     this.host = { router: this.router, layer };
     this.router.push({ name: 'screen', commands: () => this.screenCommands() });
+    // while a dialogue is open the screen beneath is out of reach of the pointer too
+    this.root.addEventListener('click', (e) => { if (this.host.layer.childElementCount > 0) { e.stopPropagation(); e.preventDefault(); } }, true);
     this.listeners = [
       [window, 'keydown', (e) => this.onKey(e as KeyboardEvent)],
       [window, 'pointerdown', () => this.firstGesture(), { once: true }],
@@ -247,6 +249,9 @@ export class App {
     const s = this.flow;
     this.screenDispose?.();
     this.screenDispose = null;
+    // a dialogue left open over the old screen would sit on top of the new one with a keyboard layer nobody owns
+    this.host.layer.replaceChildren();
+    this.router.trimTo('screen');
     if (s.screen !== 'dungeon') this.teardownDungeon();
     this.msg = null;
     const system: KeyCommand[] = [{ key: 'Escape', label: 'System', run: () => void this.openSystem() }];
