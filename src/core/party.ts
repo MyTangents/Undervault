@@ -102,6 +102,23 @@ export function setRow(p: Party, id: string, row: Row): Party {
   return normalise({ ...p, members });
 }
 
+/** Moves one member to slot `toIndex` (clamped), the others keep their order; rows follow the slots. */
+export function moveMember(p: Party, id: string, toIndex: number): Party {
+  const i = p.members.findIndex((m) => m.id === id);
+  if (i < 0) throw new Error(`no such member ${id}`);
+  const to = Math.max(0, Math.min(p.members.length - 1, toIndex));
+  const members = [...p.members];
+  const [m] = members.splice(i, 1);
+  members.splice(to, 0, m);
+  return normalise({ ...p, members });
+}
+
+/** The dead and the ash go to the bottom of the order, below the living; each group keeps its order. */
+export function sinkTheDead(p: Party): Party {
+  const gone = (m: Character) => m.dead || m.ash;
+  return normalise({ ...p, members: [...p.members.filter((m) => !gone(m)), ...p.members.filter(gone)] });
+}
+
 export function isWiped(p: Party): boolean {
   return p.members.every((m) => m.dead || m.ash);
 }

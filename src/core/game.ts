@@ -11,7 +11,7 @@ import type { MonsterGroup } from './combat/types';
 import { groupLiving, isActive, roll } from './combat/util';
 import { rollEncounter } from './encounters';
 import { applyDiscovery, awardXp, canLevelUp, levelUp } from './progression';
-import { isWiped } from './party';
+import { isWiped, sinkTheDead } from './party';
 import { rest } from './town';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
 import { SAVE_VERSION, type SaveData } from './save';
@@ -227,7 +227,7 @@ export class Game {
         this.note('death', `${m.name} died at ${level.name}, killed by a ${killer}. The ${killer} was reportedly sorry.`);
       }
     }
-    s.party = r.party;
+    s.party = sinkTheDead(r.party);
     this.cooldown = 2;
     if (r.outcome === 'won') {
       s.party = { ...awardXp(s.party, r.xp), gold: s.party.gold + r.gold };
