@@ -13,8 +13,8 @@ mark 17 8 2 discovery=saint-orrels-ledger sigil=0.8
 mark 3 13 0 discovery=tally-hymnal sigil=0.8
 mark 9 12 0 discovery=quiets-receipt exit=ending sigil=1.4
 mark 3 12 0 event=cursedRelic place=The_Drainage_Shrine
-mark 17 8 2 monsters=still-gargoyle:1
-mark 9 10 0 monsters=repossessor:1
+mark 17 8 2 monsters=still-gargoyle:3
+mark 9 10 0 monsters=repossessor:1,singing-cultist:3
 mark 4 0 0 torch=1
 mark 15 0 0 torch=1
 mark 0 8 0 torch=1

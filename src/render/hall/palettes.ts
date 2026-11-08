@@ -14,17 +14,19 @@ export interface AreaPalette {
   fog: string;
   /** how much torches flicker in this area (0-1) */
   flicker: number;
+  /** scales the fog setting: big open caverns need far less fog than a tight corridor */
+  fogK: number;
 }
 
 export const PALETTES: Record<string, AreaPalette> = {
   // plain stone, the fallback
-  main: { edge: '#9a9482', wall: '#1d1b18', floor: '#0e0d0b', ceil: '#080706', grid: '#4a463c', door: '#c8873a', rune: '#a46bff', torch: '#e8a24a', fog: '#060505', flicker: 0.3 },
+  main: { edge: '#9a9482', wall: '#1d1b18', floor: '#0e0d0b', ceil: '#080706', grid: '#4a463c', door: '#c8873a', rune: '#a46bff', torch: '#e8a24a', fog: '#060505', flicker: 0.3, fogK: 1 },
   // verdigris: green-grey stone, cold, damp
-  crypt: { edge: '#7fae9a', wall: '#16231f', floor: '#0a110f', ceil: '#060a09', grid: '#31524a', door: '#c8873a', rune: '#a46bff', torch: '#e8a24a', fog: '#050809', flicker: 0.28 },
+  crypt: { edge: '#7fae9a', wall: '#16231f', floor: '#0a110f', ceil: '#060a09', grid: '#31524a', door: '#c8873a', rune: '#a46bff', torch: '#e8a24a', fog: '#050809', flicker: 0.28, fogK: 1 },
   // rust and ember: warm rock, big spaces
-  caverns: { edge: '#b08f6a', wall: '#2a1c14', floor: '#140e0a', ceil: '#0a0706', grid: '#5e4330', door: '#8fb0a0', rune: '#ff9a4a', torch: '#ffb15a', fog: '#070504', flicker: 0.42 },
+  caverns: { edge: '#b08f6a', wall: '#2a1c14', floor: '#140e0a', ceil: '#0a0706', grid: '#5e4330', door: '#8fb0a0', rune: '#ff9a4a', torch: '#ffb15a', fog: '#070504', flicker: 0.42, fogK: 0.3 },
   // deep violet ash: cold, quiet, wrong
-  deep: { edge: '#8e86a8', wall: '#1b1727', floor: '#0c0a15', ceil: '#07050d', grid: '#3d3560', door: '#d1a24a', rune: '#c28bff', torch: '#8fd0bd', fog: '#050410', flicker: 0.58 },
+  deep: { edge: '#8e86a8', wall: '#1b1727', floor: '#0c0a15', ceil: '#07050d', grid: '#3d3560', door: '#d1a24a', rune: '#c28bff', torch: '#8fd0bd', fog: '#050410', flicker: 0.58, fogK: 0.45 },
 };
 
 export const paletteFor = (area: string): AreaPalette => PALETTES[area] ?? PALETTES.main;

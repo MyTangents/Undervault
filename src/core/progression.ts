@@ -4,7 +4,8 @@ import { ATTRS } from './types';
 import { CLASSES, DISCOVERIES, SPELLS } from './data';
 import { isActive, roll } from './combat/util';
 
-const THRESHOLDS = [0, 120, 300, 600, 1000, 1600, 2400, 3400, 4600, 6000];
+// paced for a short demo: a few fights earn the first level, and each later level takes a little longer
+const THRESHOLDS = [0, 40, 110, 230, 420, 700, 1100, 1700, 2500, 3500];
 /** Experience needed to reach `level`. */
 export function xpForLevel(level: number): number {
   if (level <= THRESHOLDS.length) return THRESHOLDS[level - 1];

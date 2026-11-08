@@ -50,6 +50,7 @@ export class Hall {
   private torches: TorchObj[] = [];
   private geometry: HallGeometry;
   private fog = new THREE.Color('#060505');
+  private fogK = 1;
   private lastT = 0;
   private settings: Settings;
 
@@ -64,7 +65,7 @@ export class Hall {
     this.camera.rotation.order = 'YXZ';
     this.geometry = buildHallGeometry(level);
     this.uniforms = {
-      uTime: { value: 0 }, uAmbient: { value: 0.5 }, uLamp: { value: settings.lamp }, uFog: { value: settings.fog }, uBright: { value: 1 },
+      uTime: { value: 0 }, uAmbient: { value: 0.75 }, uLamp: { value: settings.lamp }, uFog: { value: settings.fog }, uBright: { value: 1 },
       uCam: { value: new THREE.Vector3() }, uFogCol: { value: this.fog.clone() },
       uTorchPos: { value: Array.from({ length: 8 }, () => new THREE.Vector3(999, 999, 999)) },
       uTorchCol: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
@@ -174,6 +175,8 @@ export class Hall {
     const [r, g, b] = hexToLinear(pal.fog);
     const k = 1 - Math.exp(-dt * 2.5);
     this.fog.r += (r - this.fog.r) * k; this.fog.g += (g - this.fog.g) * k; this.fog.b += (b - this.fog.b) * k;
+    this.fogK += (pal.fogK - this.fogK) * k;
+    this.uniforms.uFog.value = this.settings.fog * this.fogK;
     this.uniforms.uFogCol.value.copy(this.fog);
     (this.scene.background as THREE.Color | null) ?? (this.scene.background = new THREE.Color());
     (this.scene.background as THREE.Color).copy(this.fog);

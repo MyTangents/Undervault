@@ -14,7 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bloom: 0.5,
   flicker: 1,
   fog: 0.28,
-  lamp: 0.8,
+  lamp: 1.1,
   quality: 'normal',
 };
 

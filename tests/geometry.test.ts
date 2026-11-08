@@ -107,3 +107,10 @@ describe('palettes and settings', () => {
     expect(effectiveBloom({ ...DEFAULT_SETTINGS, quality: 'normal' })).toBe(DEFAULT_SETTINGS.bloom);
   });
 });
+
+describe('fog scales with the kind of space', () => {
+  test('big caverns get a lighter fog scale than tight crypts, and every palette has a positive scale', () => {
+    expect(PALETTES.caverns.fogK).toBeLessThan(PALETTES.crypt.fogK);
+    for (const p of Object.values(PALETTES)) expect(p.fogK).toBeGreaterThan(0);
+  });
+});

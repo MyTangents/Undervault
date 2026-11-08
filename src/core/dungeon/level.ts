@@ -108,6 +108,7 @@ export function parseLevel(text: string): Level {
   });
 
   if (!start) throw new LevelError('missing start: line', 1);
+  const startAt: Pos & { facing: number } = start; // narrowed here; assigned inside a closure above
   if (storeys.size === 0) throw new LevelError('no storeys (@z blocks)', 1);
   const layers = Math.max(...storeys.keys()) + 1;
   for (let z = 0; z < layers; z++) if (!storeys.has(z)) throw new LevelError(`missing storey @z ${z}`, 1);
@@ -168,8 +169,8 @@ export function parseLevel(text: string): Level {
   }
 
   // Reachability from the start (falling is one-way; teleporters may carry `to=x,y,z`).
-  const seen = new Set<string>([key(start)]);
-  const queue: Pos[] = [{ x: start.x, y: start.y, z: start.z }];
+  const seen = new Set<string>([key(startAt)]);
+  const queue: Pos[] = [{ x: startAt.x, y: startAt.y, z: startAt.z }];
   while (queue.length) {
     const p = queue.pop()!;
     const next: Pos[] = [];

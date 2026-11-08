@@ -32,7 +32,7 @@ describe('demo levels', () => {
 
   test('exits link the levels in a chain, start in town and end at the ending, and land on real cells', () => {
     const all = levels();
-    const exits = all.flatMap((L) => cells(L).filter((c) => c.data.exit).map((c) => ({ from: L.id, ...c.data, p: c.p })));
+    const exits = all.flatMap((L) => cells(L).filter((c) => c.data.exit).map((c) => ({ from: L.id, ...c.data, p: c.p } as Record<string, string> & { from: string; p: Pos })));
     expect(exits.some((e) => e.exit === 'town' && e.from === 'crypt')).toBe(true);
     expect(exits.some((e) => e.exit === 'ending' && e.from === 'deep')).toBe(true);
     for (const e of exits) {
