@@ -1,0 +1,22 @@
+{
+  "name": "undervault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sorcery: Realm of the Undervault — a dungeon-crawler homage, in the browser.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "sim": "node --experimental-strip-types scripts/sim.ts"
+  },
+  "dependencies": {
+    "three": "0.160.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
+}
