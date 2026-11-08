@@ -59,8 +59,8 @@ export function townScreen(app: App): HTMLElement {
     }
   }
 }
-function attempt(app: App, fn: () => void, ok = ''): void {
-  try { fn(); app.townMsg = ok; app.townMsgBad = false; }
+function attempt(app: App, fn: () => string | void, ok = ''): void {
+  try { const m = fn(); app.townMsg = typeof m === 'string' ? m : ok; app.townMsgBad = false; }
   catch (e) { app.townMsg = e instanceof Error ? e.message : String(e); app.townMsgBad = true; }
   app.refresh();
 }
@@ -165,7 +165,6 @@ function forge(app: App): HTMLElement {
       h('td', null, h('button', { disabled: party.gold < it.price, onclick: () => attempt(app, () => { g.state.party = buy(party, it.id, SHOP, buyerId!); }, `Bought ${it.name}.`) }, 'Buy'))));
   }
   root.append(tbl);
-  root.append(h('div', { class: 'dim' }, 'Hobb Ferrule names every blade he sells, and refuses to sell the ones he likes.'));
   return root;
 }
 
@@ -188,10 +187,10 @@ function temple(app: App): HTMLElement {
           const after = raise(g.state.party, m.id, rng, m.ash ? 2 : 1);
           g.state.party = after;
           const now = after.members.find((x) => x.id === m.id);
-          if (!now) app.townMsg = `${before.name} is gone for good. Sister Ottoline wept, and was told not to.`;
-          else if (now.ash) app.townMsg = `The rite failed, and ${before.name} came back as ash. It is the receipt.`;
-          else if (now.dead) app.townMsg = `The rite failed. ${before.name} stays dead, and you are ${cost} gold lighter.`;
-          else app.townMsg = `${before.name} breathes. The ash was warm. They say it counts.`;
+          if (!now) return `${before.name} is gone for good. Sister Ottoline wept, and was told not to.`;
+          if (now.ash) return `The rite failed, and ${before.name} came back as ash. It is the receipt.`;
+          if (now.dead) return `The rite failed. ${before.name} stays dead, and you are ${cost} gold lighter.`;
+          return `${before.name} breathes. The ash was warm. They say it counts.`;
         }),
       }, `${m.ash ? 'Ash rite' : 'Raise'} (${cost}g)`)));
   }
@@ -209,15 +208,15 @@ function inn(app: App): HTMLElement {
   ];
   const costs = [0, 10, 30, 80];
   const root = h('div', { class: 'stack' });
-  root.append(h('div', null, 'Wenna Ashby remembers every guest\'s last words, if they were rude enough. Anyone with enough experience levels up when they sleep.'));
+  root.append(h('div', null, 'Anyone with enough experience levels up when they sleep.'));
   rooms.forEach(([name, desc, tier]) => root.append(h('div', { class: 'row' },
     h('b', { style: 'width:9rem' }, name), h('span', { class: 'dim grow' }, desc),
     h('button', {
       disabled: g.state.party.gold < costs[tier],
       onclick: () => attempt(app, () => {
         const r = g.restAtInn(tier);
-        app.townMsg = r.leveled.length ? `${r.leveled.join(', ')} grew stronger in the night.` : 'You slept. Nobody died.';
         app.autosave();
+        return r.leveled.length ? `${r.leveled.join(', ')} grew stronger in the night.` : 'You slept. Nobody died.';
       }),
     }, `${costs[tier]}g`))));
   return root;
@@ -227,7 +226,7 @@ function inn(app: App): HTMLElement {
 function informantPlace(app: App): HTMLElement {
   const g = app.game!;
   return h('div', { class: 'stack' },
-    h('div', null, 'Maud pays in tiny coins, each wrapped in a new rumour. This is today\'s change:'),
+    h('div', null, 'Today\'s change:'),
     ...informant(g.state.party).map((l) => h('div', { class: 'tale' }, l)));
 }
 
@@ -235,7 +234,6 @@ function informantPlace(app: App): HTMLElement {
 function tales(app: App): HTMLElement {
   const g = app.game!;
   const root = h('div', { class: 'stack' });
-  root.append(h('div', null, 'Old Tamsin Quell tells every story as if she were there, and corrects anyone who says she wasn\'t.'));
   root.append(h('button', {
     onclick: () => {
       const r = tale(g.state.party, createRng(Date.now() & 0xffffff));
