@@ -1,17 +1,12 @@
 import type { Party } from './types';
 import type { Chronicle } from './chronicle';
 import type { Pos } from './dungeon/level';
+import type { Settings } from './settings';
+
+export type { Settings };
 
 export const SAVE_KEY = 'undervault.save.v1';
 export const SAVE_VERSION = 1;
-
-export interface Settings {
-  automap: 'on' | 'off';
-  bloom: number;
-  flicker: number;
-  fog: number;
-  quality: 'low' | 'normal';
-}
 
 export interface SaveData {
   game: 'undervault';

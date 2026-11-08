@@ -14,7 +14,7 @@ const data = (): SaveData => ({
   automaps: { crypt: '{"seen":["1,1,0"],"known":[]}' },
   position: { levelId: 'crypt', pos: { x: 1, y: 1, z: 0 }, facing: 1 },
   day: 3,
-  settings: { automap: 'on', bloom: 0.5, flicker: 1, fog: 0.28, quality: 'normal' },
+  settings: { automap: 'on', bloom: 0.5, flicker: 1, fog: 0.28, lamp: 0.8, quality: 'normal' },
 });
 
 const memory = (): StorageLike & { map: Map<string, string> } => {
