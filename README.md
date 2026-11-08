@@ -55,7 +55,7 @@ All names (people, places, monsters, spells, items) are original, and `tests/nam
 
 `docs/superpowers/specs/2026-11-08-undervault-design.md` is the design, and
 `docs/superpowers/plans/2026-11-08-undervault-demo-plan.md` is the plan this demo was built from. `docs/dev/spike-hall.html`
-is the throwaway prototype the look came from.
+is the throwaway prototype the look came from. `docs/story/story-kit.md` is the writer's kit of reworkable story elements (tables, recipes, tales, event seeds, chronicle lines, discovery hooks) that the town tales, events and discoveries were drawn from; most of it is still to be mined.
 
 ## Before a public launch
 
