@@ -20,6 +20,8 @@ export interface Level {
   w: number;
   h: number;
   layers: number;
+  /** how deep this level is, which sets the monsters met here (header line: depth: N) */
+  depth: number;
   start: Pos & { facing: number };
   cell(p: Pos): Cell;
   areaOf(p: Pos): string;
@@ -68,7 +70,7 @@ const key = (p: Pos) => `${p.x},${p.y},${p.z}`;
 
 export function parseLevel(text: string): Level {
   const lines = text.split(/\r?\n/);
-  let name = 'Unnamed', id = '';
+  let name = 'Unnamed', id = '', depth = 1;
   let start: (Pos & { facing: number }) | null = null, startLine = 1;
   const areaDirs: { id: string; z: number | '*'; x0: number; x1: number; y0: number; y1: number }[] = [];
   const marks: { p: Pos; data: Record<string, string> }[] = [];
@@ -87,6 +89,7 @@ export function parseLevel(text: string): Level {
     if (curZ !== null) { storeys.get(curZ)!.push({ text: s, line }); return; }
     if (s.startsWith('name:')) name = s.slice(5).trim();
     else if (s.startsWith('id:')) id = s.slice(3).trim();
+    else if (s.startsWith('depth:')) depth = Number(s.slice(6).trim()) || 1;
     else if (s.startsWith('start:')) {
       const [x, y, z, f] = s.slice(6).trim().split(/\s+/);
       const facing = 'NESW'.indexOf((f ?? '').toUpperCase());
@@ -140,7 +143,7 @@ export function parseLevel(text: string): Level {
   const inBounds = (p: Pos) => p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < w && p.y < h && p.z < layers;
   const SOLID: Cell = { kind: 'solid', area: 'main' };
   const level: Level = {
-    id: id || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, w, h, layers, start,
+    id: id || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, w, h, layers, depth, start,
     inBounds,
     cell: (p) => (inBounds(p) ? cells[p.z][p.y][p.x] : SOLID),
     areaOf: (p) => (inBounds(p) ? cells[p.z][p.y][p.x].area : 'main'),

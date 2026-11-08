@@ -1,0 +1,50 @@
+// Level 1. The Receiving Hall and the rooms around it.
+id: crypt
+name: The Crypt of the Gate
+depth: 1
+start: 3 3 0 E
+area main z=0 x=0-6 y=0-15
+area crypt z=0 x=7-31 y=0-15
+area deep z=0 x=0-5 y=7-15
+mark 3 3 0 exit=town sigil=1.2
+mark 29 3 0 exit=caverns to=11,2,4,S sigil=0.9
+mark 27 3 0 discovery=lienholders-primer sigil=0.8
+mark 14 7 0 event=collapse place=The_Tallow_Stair closes=14,6,0
+mark 14 11 0 monsters=tally-skeleton:4,drum-orc:2
+mark 2 11 0 monsters=ledger-rat:6
+mark 9 1 0 torch=1
+mark 13 1 0 torch=1
+mark 17 1 0 torch=1
+mark 21 1 0 torch=1
+mark 25 1 0 torch=1
+mark 11 5 0 torch=1
+mark 19 5 0 torch=1
+mark 23 5 0 torch=1
+mark 0 3 0 torch=1
+mark 3 6 0 torch=1
+mark 11 8 0 torch=1
+mark 17 8 0 torch=1
+mark 0 10 0 torch=1
+mark 12 1 0 rune=1
+mark 18 1 0 rune=1
+mark 3 0 0 rune=1
+mark 14 14 0 rune=1
+mark 7 14 0 rune=1
+
+@z 0
+################################
+#.....##########################
+#.....#.....................####
+#.....D..#################..D.##
+#.....#.....................####
+#.....########D###########D#####
+##############.###########.#####
+##############V###########.#####
+#....#########.###########.#####
+#....#####.........#######.#####
+#....#####.........#######.#####
+#.E......D..#.E.#..D.......#####
+#....#####.........#############
+#....#####.........#############
+#....###########################
+################################
