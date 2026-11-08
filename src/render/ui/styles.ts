@@ -85,6 +85,25 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
   .townx .face canvas{width:160px}
 }
 
+/* the dungeon */
+.dungeon2{padding:12px;gap:10px;display:grid;grid-template-columns:1fr minmax(15rem,21rem);grid-template-rows:minmax(0,1fr) auto auto auto;grid-template-areas:"vf aside" "wf wf" "rf rf" "bar bar"}
+.dungeon2 .vf{grid-area:vf;min-height:0;min-width:0;padding:14px 9px 8px}.dungeon2 .vf>.frame{height:100%}.dungeon2 .vf .fbody{padding:0}
+.dungeon2 aside{grid-area:aside;display:flex;flex-direction:column;gap:14px;padding:14px 9px 8px;overflow:auto;min-height:0}
+.dungeon2 .wf{grid-area:wf;padding:6px 9px}.dungeon2 .rf{grid-area:rf;padding:6px 9px}.dungeon2 .bar{grid-area:bar}
+.dungeon2 .view{position:relative;width:100%;height:100%;min-height:12rem;background:#000}
+.dungeon2 canvas.gl{width:100%;height:100%;display:block}
+.dungeon2 .hud{position:absolute;left:12px;top:10px;font-size:.9rem;text-shadow:0 1px 3px #000;pointer-events:none;color:var(--text)}
+.dungeon2 canvas.map{width:100%;aspect-ratio:1;background:#0a0806;border:1px solid var(--line);image-rendering:pixelated;display:block}
+.dungeon2 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem}
+.dungeon2 .msgwin{min-height:5.5em;max-height:7.5em}
+.dungeon2 .roster{display:grid;grid-template-columns:repeat(2,1fr);gap:1px .8rem}
+.dungeon2 .legend{opacity:.7;font-size:.85rem;padding:.1em .2em}
+@media (max-width:900px){
+  .dungeon2{grid-template-columns:1fr;grid-template-rows:auto;grid-template-areas:"vf" "aside" "wf" "rf" "bar";overflow:auto}
+  .dungeon2 .view{height:46vh}
+  .dungeon2 aside{flex-direction:row;overflow-x:auto}
+}
+
 /* combat */
 .combat2{padding:12px;gap:10px;display:grid;grid-template-columns:minmax(16rem,26rem) 1fr minmax(15rem,22rem);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"scene talk party" "bottom bottom bottom";background:radial-gradient(ellipse at 50% 20%,#1a140e 0,#07060a 70%)}
 .combat2 .scene{grid-area:scene}.combat2 .talk{grid-area:talk}.combat2 .party{grid-area:party}.combat2 .bottom{grid-area:bottom}

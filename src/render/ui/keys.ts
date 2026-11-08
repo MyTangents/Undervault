@@ -8,6 +8,8 @@ export interface KeyCommand {
   enabled?: boolean;
   /** bound but not printed (for example Escape beside a printed L)eave) */
   hidden?: boolean;
+  /** a held key keeps running it (walking); other commands ignore key repeat */
+  repeat?: boolean;
   run: () => void;
 }
 
@@ -46,20 +48,22 @@ export class KeyRouter {
 
   /** True when the key was consumed (the caller should preventDefault). */
   handle(key: string, mods: KeyMods = {}): boolean {
-    if (mods.repeat) return false;
     if (mods.ctrl || mods.alt || mods.meta) return false;
     if (this.locked) {
+      if (mods.repeat) return false;
       if (key === 'Enter' || key === ' ') { this.onSkip?.(); return true; }
       return false;
     }
+    const held = !!mods.repeat;
     const k = norm(key);
     for (let i = this.layers.length - 1; i >= 0; i--) {
       const l = this.layers[i];
-      if (l.onKey?.(key)) return true;
+      if ((!held || key.startsWith('Arrow')) && l.onKey?.(key)) return true;
       const named = k === 'Escape' || k === 'Enter';
       if (!l.typing || named) {
         const c = l.commands().find((x) => norm(x.key) === k);
         if (c) {
+          if (held && !c.repeat) return false;
           if (c.enabled !== false) c.run();
           return true;
         }

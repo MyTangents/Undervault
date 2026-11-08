@@ -1,20 +1,18 @@
-import { ITEMS, SPELLS } from '../../../core/data';
+import { ITEMS } from '../../../core/data';
 import { displayName, equip, identifyItem, unequip } from '../../../core/items';
 import { renderChronicle } from '../../../core/chronicle';
-import { ATTRS } from '../../../core/types';
 import type { Character } from '../../../core/types';
 import type { App } from '../app';
 import { openList } from '../dialog';
 import { h } from '../dom';
 import { accentFor } from '../frame';
-import { className, raceName } from '../party';
+import { memberSheet, SLOTS } from '../sheet';
 import { placeLayout } from './layout';
 import type { PlaceLayout, PlaceScreen } from './layout';
 import { memberPicker } from './pick';
 import { portraitForCharacter } from '../../portrait';
 import { leaveCommands } from './leave';
 
-const SLOTS = ['weapon', 'armour', 'shield', 'helm', 'trinket'];
 const itemDef = (id: string) => ITEMS.find((i) => i.id === id)!;
 
 /** The Party and its Packs: pick who, then E)quip, U)nequip, S)tudy. The sheet shows the face and everything they carry. */
@@ -49,21 +47,7 @@ export function placeScreen(app: App): PlaceScreen {
   }
 
   function sheet(m: Character | undefined): (Node | null)[] {
-    if (!m) return [h('div', { class: 'dim' }, 'Nobody to look at.')];
-    const party = g.state.party;
-    const spells = m.known.map((id) => SPELLS.find((s) => s.id === id)?.name ?? id);
-    const slot = m.row === 'front' ? 'front rank' : 'back rank';
-    return [
-      h('div', null, h('b', null, m.name), ` · Lv ${m.level} ${raceName(m.raceId)} ${className(m.classId)} · ${m.alignment} · ${slot}`),
-      h('div', null, `HP ${m.hp}/${m.maxHp}${m.dead || m.ash ? (m.ash ? ' · ash' : ' · dead') : ''}${m.status.length ? ` · ${m.status.join(', ')}` : ''}`),
-      h('div', null, ATTRS.map((a) => `${a.toUpperCase()} ${m.stats[a]}`).join('  ')),
-      h('div', { class: 'dim' }, `Spells: ${spells.length ? spells.join(', ') : 'none'}`),
-      h('div', { class: 'dim' }, `Techniques: ${m.techniques.length ? m.techniques.join(', ') : 'none'}`),
-      h('div', null, h('b', null, 'Wearing')),
-      ...SLOTS.map((s) => h('div', { class: 'dim' }, `${s}: ${m.equipped[s] ? displayName(party, m.equipped[s]) : 'nothing'}`)),
-      h('div', null, h('b', null, 'Carrying')),
-      h('div', { class: 'dim' }, m.inventory.length ? m.inventory.map((id) => displayName(party, id)).join(', ') : 'Nothing but lint.'),
-    ];
+    return m ? memberSheet(m, g.state.party) : [h('div', { class: 'dim' }, 'Nobody to look at.')];
   }
 
   function swap(id: string, f: (c: Character) => Character): void {

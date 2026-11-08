@@ -6,11 +6,11 @@ import { townScreen } from './town';
 import { KeyRouter } from './keys';
 import type { KeyCommand } from './keys';
 import type { UiHost } from './dialog';
-import { commandBar, getGlow, setGlow } from './frame';
+import { accentFor, commandBar, frame, getGlow, messageWindow, rosterStrip, setGlow } from './frame';
 import type { MessageWindow } from './frame';
+import { openCamp } from './camp';
 import { openOptions, openSystem } from './system';
 import { CombatScreen } from './combat';
-import { partyPanel } from './party';
 import { Game, type ArriveResult } from '../../core/game';
 import { createRng } from '../../core/rng';
 import { demoParty } from '../../core/sim';
@@ -53,7 +53,10 @@ export class App {
   private toastEl: HTMLElement | null = null;
   private toastTimer = 0;
   private hudEl: HTMLElement | null = null;
-  private sideEl: HTMLElement | null = null;
+  private viewFrame: HTMLElement | null = null;
+  private dungeonFrames: HTMLElement[] = [];
+  private rosterEl: HTMLElement | null = null;
+  private barEl: HTMLElement | null = null;
   // keyboard
   readonly router = new KeyRouter();
   readonly host: UiHost;
@@ -136,6 +139,7 @@ export class App {
   refresh(): void { this.render(); }
 
   toast(msg: string, ms = 5200): void {
+    if (this.msg) { this.msg.say(msg); return; }
     this.toastEl?.remove();
     this.toastEl = h('div', { class: 'toast' }, msg);
     document.body.append(this.toastEl);
@@ -251,7 +255,7 @@ export class App {
     if (s.screen !== 'combat' && this.combat) { this.combat.destroy(); this.combat = null; }
 
     if (s.screen === 'dungeon') {
-      if (this.hall && this.viewEl) { this.root.replaceChildren(this.dungeonShell(true)); this.updateSide(); return; }
+      if (this.hall && this.viewEl) { this.root.replaceChildren(this.dungeonShell(true)); this.updateDungeon(); return; }
       this.root.replaceChildren(this.dungeonShell(false));
       requestAnimationFrame(() => this.startView());
       return;
@@ -333,39 +337,62 @@ export class App {
 
   private dungeonShell(existing: boolean): HTMLElement {
     const g = this.game!;
-    if (existing && this.viewEl) {
-      // coming back from the settings overlay: reuse the live view
-      return h('div', { class: 'screen dungeon' }, this.viewEl, this.sideBar());
+    if (!(existing && this.viewEl)) {
+      this.viewEl = h('div', { class: 'view' });
+      this.hudEl = h('div', { class: 'hud' });
+      this.viewEl.append(h('canvas', { class: 'gl' }), this.hudEl);
+      this.mapZ = g.state.pos.z;
     }
-    this.viewEl = h('div', { class: 'view' });
-    this.hudEl = h('div', { class: 'hud' });
-    this.viewEl.append(h('canvas', { class: 'gl' }), this.hudEl,
-      h('div', { class: 'hints' }, 'W/S walk · A/D turn · Q/E sidestep · R/F stairs · Z/X look · [ ] map storey · Esc system'));
-    this.mapZ = g.state.pos.z;
-    return h('div', { class: 'screen dungeon' }, this.viewEl, this.sideBar());
+    this.msg = messageWindow(6);
+    const mapCanvas = h('canvas', { class: 'map', width: 320, height: 320 }) as HTMLCanvasElement;
+    this.mapView = new AutomapView(mapCanvas);
+    const accent = accentFor('dungeon');
+    const cmd = (c: Command, label: string, title: string) => h('button', { class: 'quiet', type: 'button', title, onclick: () => this.controller?.command(c) }, label);
+    this.viewFrame = frame(g.level().name, accent, this.viewEl);
+    this.viewFrame.classList.add('viewframe');
+    const mapFrame = frame('Map', accent, mapCanvas,
+      h('div', { class: 'row', style: 'margin-top:.4rem' },
+        h('button', { class: 'quiet', type: 'button', onclick: () => this.setMapZ(this.mapZ + 1) }, '] Storey ▲'),
+        h('button', { class: 'quiet', type: 'button', onclick: () => this.setMapZ(this.mapZ - 1) }, '[ Storey ▼')));
+    const padFrame = frame('Move', accent, h('div', { class: 'pad' },
+      cmd('turnLeft', '⟲', 'Turn left'), cmd('fwd', '▲', 'Forward'), cmd('turnRight', '⟳', 'Turn right'),
+      cmd('left', '◄', 'Sidestep left'), cmd('back', '▼', 'Back'), cmd('right', '►', 'Sidestep right'),
+      cmd('up', 'Up', 'Climb stairs'), cmd('down', 'Down', 'Descend stairs')));
+    this.dungeonFrames = [this.viewFrame, mapFrame, padFrame];
+    const wordsFrame = frame('Words', accent, this.msg.el);
+    this.dungeonFrames.push(wordsFrame);
+    this.rosterEl = h('div', { class: 'rosterslot' });
+    this.barEl = h('div', { class: 'barslot' });
+    this.setCommands(() => this.dungeonCommands());
+    this.msg.say(existing ? 'The party presses on.' : 'The air changes. Somewhere below, a ledger closes.');
+    const shell = h('div', { class: 'screen dungeon2' },
+      h('div', { class: 'vf' }, this.viewFrame),
+      h('aside', null, mapFrame, padFrame),
+      h('div', { class: 'wf' }, wordsFrame),
+      h('div', { class: 'rf' }, frame('The Party', accentFor('party'), this.rosterEl)),
+      h('div', { class: 'bar' }, this.barEl));
+    this.updateDungeon();
+    return shell;
   }
 
-  private sideBar(): HTMLElement {
-    const g = this.game!;
-    const cmd = (c: Command, label: string, title: string) => h('button', { class: 'quiet', title, onclick: () => this.controller?.command(c) }, label);
-    const map = h('canvas', { class: 'map', width: 320, height: 320 }) as HTMLCanvasElement;
-    this.mapView = new AutomapView(map);
-    this.sideEl = h('aside', null,
-      h('div', { class: 'panel' }, h('h3', { id: 'leveltitle' }, g.level().name), map,
-        h('div', { class: 'row', style: 'margin-top:.4rem' },
-          h('button', { class: 'quiet', onclick: () => this.setMapZ(this.mapZ + 1) }, 'Storey ▲'),
-          h('button', { class: 'quiet', onclick: () => this.setMapZ(this.mapZ - 1) }, 'Storey ▼'))),
-      h('div', { class: 'panel' }, h('div', { class: 'row', style: 'flex-wrap:wrap' },
-        cmd('turnLeft', '⟲', 'Turn left'), cmd('fwd', '▲', 'Forward'), cmd('turnRight', '⟳', 'Turn right'),
-        cmd('left', '◄', 'Sidestep left'), cmd('back', '▼', 'Back'), cmd('right', '►', 'Sidestep right'),
-        cmd('up', 'Up', 'Climb stairs'), cmd('down', 'Down', 'Descend stairs'))),
-      h('div', { id: 'partybox' }),
-      h('div', { class: 'panel' }, h('h3', null, 'Chronicle'), h('div', { class: 'chron', id: 'chronbox' })),
-      h('div', { class: 'row' },
-        h('button', { class: 'quiet', onclick: () => this.saveToFile() }, 'Save to file'),
-        h('button', { class: 'quiet', onclick: () => void this.openOptions() }, 'Settings')));
-    return this.sideEl;
+  /** Keys in the dungeon: walking (held keys repeat), looking, the map storey, the camp and the system dialogue. */
+  private dungeonCommands(): KeyCommand[] {
+    const move = (keys: string[], c: Command): KeyCommand[] =>
+      keys.map((key) => ({ key, label: c, hidden: true, repeat: true, run: () => this.controller?.command(c) }));
+    return [
+      ...move(['w', 'ArrowUp'], 'fwd'), ...move(['s', 'ArrowDown'], 'back'),
+      ...move(['a', 'ArrowLeft'], 'turnLeft'), ...move(['d', 'ArrowRight'], 'turnRight'),
+      ...move(['q'], 'left'), ...move(['e'], 'right'), ...move(['r'], 'up'), ...move(['f'], 'down'),
+      { key: 'z', label: 'Look up', hidden: true, repeat: true, run: () => this.controller?.look(0.15) },
+      { key: 'x', label: 'Look down', hidden: true, repeat: true, run: () => this.controller?.look(-0.15) },
+      { key: '[', label: 'Storey down', hidden: true, run: () => this.setMapZ(this.mapZ - 1) },
+      { key: ']', label: 'Storey up', hidden: true, run: () => this.setMapZ(this.mapZ + 1) },
+      { key: 'c', label: 'Camp', run: () => void this.openCamp() },
+      { key: 'Escape', label: 'System', run: () => void this.openSystem() },
+    ];
   }
+
+  openCamp(): Promise<void> { return openCamp(this); }
 
   private setMapZ(z: number): void {
     const lv = this.game!.level();
@@ -376,23 +403,25 @@ export class App {
   private drawMap(): void {
     const g = this.game;
     if (!g || !this.mapView || this.flow.screen === 'town') return;
-    this.mapView.draw(g.automap(), g.level(), g.state.pos, g.state.facing, this.mapZ, this.settings().automap);
+    try { this.mapView.draw(g.automap(), g.level(), g.state.pos, g.state.facing, this.mapZ, this.settings().automap); } catch { /* a map that cannot draw never breaks the screen */ }
   }
 
-  private updateSide(): void {
-    const g = this.game!;
-    const party = this.sideEl?.querySelector('#partybox');
-    if (party) party.replaceChildren(partyPanel(g.state.party));
-    const chron = this.sideEl?.querySelector('#chronbox');
-    if (chron) chron.replaceChildren(...renderChronicle(g.state.chronicle, 6).map((l) => h('div', null, l)));
-    const title = this.sideEl?.querySelector('#leveltitle');
-    if (title) title.textContent = g.level().name;
+  /** Redraws everything on the dungeon screen that follows the game: roster, title, hud, accent, bar, map. */
+  updateDungeon(): void {
+    const g = this.game;
+    if (!g || this.flow.screen !== 'dungeon') return;
+    this.rosterEl?.replaceChildren(rosterStrip(g.state.party, {}));
+    this.barEl?.replaceChildren(
+      h('div', { class: 'legend' }, 'W/S walk · A/D turn · Q/E step · R/F stairs · Z/X look · [ ] map'),
+      commandBar(this.dungeonCommands()));
     const here = g.level().areaOf(g.state.pos);
+    this.viewFrame?.querySelector('.ftitle')?.replaceChildren(g.level().name);
     if (this.hudEl) {
       this.hudEl.replaceChildren(h('b', null, g.level().name.toUpperCase()),
         h('div', { class: 'dim' }, `${here} · storey ${g.state.pos.z + 1} of ${g.level().layers} · facing ${'NESW'[g.state.facing]}`));
     }
-    document.documentElement.style.setProperty('--accent', paletteFor(here).edge);
+    const edge = paletteFor(here).edge;
+    for (const f of this.dungeonFrames) f.style.setProperty('--accent', edge);
     this.drawMap();
   }
 
@@ -409,8 +438,7 @@ export class App {
       this.hall.resize(canvas.clientWidth || 800, canvas.clientHeight || 600);
     } catch (e) {
       this.hall = null;
-      view.append(h('div', { class: 'toast', style: 'position:absolute;top:40%;left:50%;pointer-events:auto' },
-        e instanceof NoWebGLError ? e.message : 'The dungeon view could not start.'));
+      this.say(e instanceof NoWebGLError ? e.message : 'The dungeon view could not start.');
     }
   }
 
@@ -420,7 +448,7 @@ export class App {
     this.mountHall();
     this.controller = new Controller(g.level(), g.state.pos, g.state.facing);
     this.controller.onArrive = (pos, fell) => this.arrived(pos, fell);
-    this.updateSide();
+    this.updateDungeon();
     cancelAnimationFrame(this.raf);
     const loop = (now: number): void => {
       this.raf = requestAnimationFrame(loop);
@@ -439,7 +467,7 @@ export class App {
     if (this.steps % 6 === 0) this.autosave();
     const results = g.onArrive(pos, fell, c.facing);
     this.mapZ = pos.z;
-    this.updateSide();
+    this.updateDungeon();
     for (const r of results) if (this.handle(r)) return;
   }
 
@@ -453,14 +481,14 @@ export class App {
         const d = DISCOVERIES.find((x) => x.id === r.id);
         this.audio.play('cast');
         this.toast(`${d?.name ?? r.id}. ${d?.text ?? ''}`, 9000);
-        this.updateSide();
+        this.updateDungeon();
         return false;
       }
       case 'event':
         this.toast(r.text, 8000);
         this.audio.play('door');
         if (r.closed > 0) { this.mountHall(); }
-        this.updateSide();
+        this.updateDungeon();
         return false;
       case 'exit':
         if (r.to === 'town') { g.returnToTown(); this.autosave(); this.dispatch({ type: 'returnToTown' }); return true; }

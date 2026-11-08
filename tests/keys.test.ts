@@ -73,6 +73,18 @@ describe('KeyRouter', () => {
     expect(run).not.toHaveBeenCalled();
   });
 
+  test('a command marked repeat keeps running while its key is held, and held arrows reach onKey', () => {
+    const r = new KeyRouter();
+    const walk = vi.fn(), plain = vi.fn(), arrows: string[] = [];
+    r.push(layer('dungeon', [{ key: 'w', label: 'Walk', repeat: true, run: walk }, cmd('c', plain)], { onKey: (k) => (k.startsWith('Arrow') ? (arrows.push(k), true) : false) }));
+    expect(r.handle('w', { repeat: true })).toBe(true);
+    expect(walk).toHaveBeenCalledTimes(1);
+    expect(r.handle('c', { repeat: true })).toBe(false);
+    expect(plain).not.toHaveBeenCalled();
+    expect(r.handle('ArrowDown', { repeat: true })).toBe(true);
+    expect(arrows).toEqual(['ArrowDown']);
+  });
+
   test('ctrl, alt and meta combinations are never consumed', () => {
     const r = new KeyRouter();
     const run = vi.fn();
