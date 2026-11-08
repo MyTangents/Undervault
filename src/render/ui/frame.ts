@@ -32,7 +32,7 @@ export function frame(title: string, accent: string, ...kids: Kid[]): HTMLElemen
 
 /** `F)ight  S)pell`: the key in the accent colour; disabled commands dimmed and inert; clicking runs one. */
 export function commandBar(cmds: KeyCommand[]): HTMLElement {
-  return h('nav', { class: 'cmdbar' }, ...cmds.map((c) => {
+  return h('nav', { class: 'cmdbar' }, ...cmds.filter((c) => !c.hidden).map((c) => {
     const text = labelOf(c);
     const close = text.indexOf(')');
     const start = text.lastIndexOf(' ', close) + 1;
@@ -44,7 +44,16 @@ export function commandBar(cmds: KeyCommand[]): HTMLElement {
   }));
 }
 
-export interface MessageWindow { el: HTMLElement; say(line: string): void; clear(): void }
+/** How fast spoken lines appear. 0 shows them at once (tests, and people who asked for less motion). */
+export const TYPING = { msPerChar: 14 };
+
+export interface MessageWindow {
+  el: HTMLElement;
+  say(line: string): void;
+  /** Like say, but the line appears a few characters at a time; resolves when it is complete. */
+  type(line: string): Promise<void>;
+  clear(): void;
+}
 
 /** A few lines of narration; the newest is brightest. */
 export function messageWindow(max = 6): MessageWindow {
@@ -56,6 +65,24 @@ export function messageWindow(max = 6): MessageWindow {
       el.append(h('div', { class: 'line new' }, line));
       while (el.children.length > max) el.firstElementChild!.remove();
       el.scrollTop = el.scrollHeight;
+    },
+    type(line) {
+      const ms = TYPING.msPerChar;
+      if (ms <= 0) { this.say(line); return Promise.resolve(); }
+      el.querySelector('.new')?.classList.remove('new');
+      const row = h('div', { class: 'line new' }, '');
+      el.append(row);
+      while (el.children.length > max) el.firstElementChild!.remove();
+      return new Promise<void>((resolve) => {
+        let i = 0;
+        const tick = () => {
+          i = Math.min(line.length, i + 2);
+          row.textContent = line.slice(0, i);
+          el.scrollTop = el.scrollHeight;
+          if (i >= line.length) resolve(); else setTimeout(tick, ms);
+        };
+        tick();
+      });
     },
     clear() { el.replaceChildren(); },
   };

@@ -67,6 +67,24 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .dialog .hint{opacity:.6;font-size:.82rem}
 .cmd.off{opacity:.35}
 
+/* the town screens */
+.townx{padding:12px;gap:10px;display:grid;grid-template-columns:minmax(15rem,21rem) 1fr minmax(16rem,24rem);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"head head head" "left mid right" "bar bar bar"}
+.townx .thead{grid-area:head;display:flex;justify-content:space-between;align-items:baseline;padding:0 .3em}
+.townx .left,.townx .mid,.townx .right{min-height:0;padding:14px 9px 8px;overflow-x:hidden;overflow-y:auto}
+.townx .left{grid-area:left}.townx .mid{grid-area:mid}.townx .right{grid-area:right}
+.townx .mid>.frame{height:100%}
+.townx .barslot{grid-area:bar}
+.townx .mid .msgwin{max-height:none;height:100%;min-height:10em;overflow:auto;font-size:1.02rem}
+.townx .face{display:flex;justify-content:center;padding:.2em 0 .6em}
+.townx .face canvas{width:256px;max-width:100%;aspect-ratio:128/160;image-rendering:pixelated;border:1px solid var(--line);background:#000}
+.townx .blurb{margin:.2em .2em;opacity:.85;line-height:1.4;font-size:.9rem}
+.townx .sceneextra{font-size:.88rem;line-height:1.45;padding:.3em .2em}
+.townx .cmdbar{border-top:1px solid var(--line);padding-top:.5em;font-size:1.05rem;gap:.3em 1.6em}
+@media (max-width:900px){
+  .townx{grid-template-columns:1fr;grid-template-rows:auto;grid-template-areas:"head" "left" "mid" "right" "bar";overflow:auto}
+  .townx .face canvas{width:160px}
+}
+
 /* title */
 .title{align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at 50% 38%,#1c1710 0,#09070a 62%,#050406 100%)}
 .title h1{font-size:clamp(2.2rem,8vw,5rem);color:#e9d9ae;text-shadow:0 0 14px #b8923e55,0 3px 0 #000;letter-spacing:.14em;margin:0}

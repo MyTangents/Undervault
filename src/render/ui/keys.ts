@@ -6,6 +6,8 @@ export interface KeyCommand {
   label: string;
   /** false: printed dimmed and inert (still consumes its key). Default true. */
   enabled?: boolean;
+  /** bound but not printed (for example Escape beside a printed L)eave) */
+  hidden?: boolean;
   run: () => void;
 }
 

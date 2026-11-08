@@ -38,7 +38,7 @@ export class App {
   flow: AppState;
   audio: AudioSystem;
   // town state
-  townPlace = 'tavern';
+  townPlace = 'menu';
   townMsg = '';
   townMsgBad = false;
   selectedId: string | null = null;
@@ -65,6 +65,7 @@ export class App {
   /** the current screen's message window, if it has one */
   msg: MessageWindow | null = null;
   private screenCommands: () => KeyCommand[] = () => [];
+  private screenDispose: (() => void) | null = null;
   private listeners: [EventTarget, string, EventListener, AddEventListenerOptions?][] = [];
 
   constructor(private root: HTMLElement) {
@@ -104,6 +105,8 @@ export class App {
   /** What the current screen prints and binds: one table. */
   currentCommands(): KeyCommand[] { return this.screenCommands(); }
   setCommands(f: () => KeyCommand[]): void { this.screenCommands = f; }
+  /** The screen being built wants this called when it is replaced (stop its animations). */
+  onScreenDispose(f?: () => void): void { this.screenDispose = f ?? null; }
 
   /** Says a line in the current screen's message window; screens without one still get a toast. */
   say(line: string): void { if (this.msg) this.msg.say(line); else this.toast(line); }
@@ -183,7 +186,7 @@ export class App {
     this.combat = null;
     this.root.querySelector('.overlay')?.remove();
     this.game = g;
-    this.townPlace = 'tavern';
+    this.townPlace = 'menu';
     this.townMsg = '';
     this.recruited = new Set();
     if (g.isOver()) { // a wiped party goes to the Roll, not into a dungeon where nothing can happen
@@ -199,7 +202,7 @@ export class App {
     const g = Game.newGame(demoParty(), createRng(Date.now() & 0xffffff), this.defaultSettings);
     g.returnToTown();
     this.game = g;
-    this.townPlace = 'tavern';
+    this.townPlace = 'menu';
     this.townMsg = '';
     this.recruited = new Set();
     this.dispatch({ type: 'newGame' });
@@ -244,6 +247,8 @@ export class App {
 
   private render(): void {
     const s = this.flow;
+    this.screenDispose?.();
+    this.screenDispose = null;
     if (s.screen !== 'dungeon') this.teardownDungeon();
     this.msg = null;
     const system: KeyCommand[] = [{ key: 'Escape', label: 'System', run: () => void this.openSystem() }];
