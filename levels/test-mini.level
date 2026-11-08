@@ -1,0 +1,16 @@
+// A tiny two-storey level used by the tests. Lines starting with // are comments.
+name: Mini Test Hall
+start: 1 1 0 E
+area hall z=* x=0-4 y=0-3
+
+@z 0
+#####
+#..<#
+#...#
+#####
+
+@z 1
+#####
+#..>#
+#.D.#
+#####
