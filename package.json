@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
-    "sim": "node --experimental-strip-types scripts/sim.ts"
+    "sim": "vitest run --config vitest.sim.config.ts"
   },
   "dependencies": {
     "three": "0.160.1"

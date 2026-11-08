@@ -1,7 +1,7 @@
 import type { Rng } from '../rng';
 import type { Character, MonsterDef, Party } from '../types';
 import { isWiped } from '../party';
-import { ITEMS } from '../data';
+import { ITEMS, SPELLS } from '../data';
 import { castSpell } from '../magic';
 import { chooseMonsterAction } from './ai';
 import type { CombatEvent, CombatState, MonsterGroup, Order, Outcome, Warning } from './types';
@@ -121,6 +121,11 @@ export function resolveRound(s0: CombatState, orders: Record<string, Order>, rng
         if (act.kind === 'flee') {
           g.hp[firstLiving(g)] = 0;
           events.push({ t: 'monsterFlees', group: a.gi });
+        } else if (act.kind === 'callHelp') {
+          if (g.hp.length < MAX_GROUP_SIZE) g.hp.push(Math.max(1, roll(g.def.hp, rng)));
+          events.push({ t: 'monsterCalls', group: a.gi });
+        } else if (act.kind === 'cast') {
+          monsterCast(s, a.gi, act.spellId, act.target, rng, events, kill, g);
         } else if (act.kind === 'attack') {
           for (let k = 0; k < g.def.attacks; k++) {
             const target = s.party.members.find((x) => x.id === act.target && isActive(x)) ?? livingMembers(s.party)[0];
@@ -131,6 +136,7 @@ export function resolveRound(s0: CombatState, orders: Record<string, Order>, rng
             let dmg = roll(g.def.damage, rng);
             if (parrying.has(target.id)) dmg = Math.ceil(dmg / 2);
             target.hp = Math.max(0, target.hp - dmg);
+            target.status = target.status.filter((x) => x !== 'asleep');
             const killed = target.hp === 0;
             events.push({ t: 'monsterHit', group: a.gi, target: target.id, dmg, killed });
             if (killed) { kill(target); g.enraged = true; }
@@ -139,5 +145,36 @@ export function resolveRound(s0: CombatState, orders: Record<string, Order>, rng
       }
     }
   }
+  // Sleep, silence and paralysis wear off over a few rounds.
+  for (const m of s.party.members) {
+    m.status = m.status.filter((x) => !(x === 'asleep' || x === 'silenced' || x === 'paralysed') || !rng.chance(0.35));
+  }
   return { state: s, events, outcome: outcomeOf(s) };
+}
+
+/** A monster casts one of its spells at the party. Mutates `s` (a working clone). */
+function monsterCast(
+  s: CombatState, gi: number, spellId: string, targetId: string, rng: Rng,
+  events: CombatEvent[], kill: (c: Character) => void, g: MonsterGroup,
+): void {
+  const spell = SPELLS.find((x) => x.id === spellId);
+  const alive = livingMembers(s.party);
+  if (!spell || g.silenced || alive.length === 0) return;
+  const victims = spell.target === 'group' ? alive : [alive.find((m) => m.id === targetId) ?? alive[0]];
+  if (spell.kind === 'damage') {
+    for (const v of victims) {
+      const dmg = roll(spell.power, rng);
+      v.hp = Math.max(0, v.hp - dmg);
+      v.status = v.status.filter((x) => x !== 'asleep');
+      events.push({ t: 'monsterCasts', group: gi, spellId, target: v.id, dmg });
+      if (v.hp === 0) { kill(v); g.enraged = true; }
+    }
+  } else if (spell.kind === 'sleep' || spell.kind === 'silence') {
+    const status = spell.kind === 'sleep' ? 'asleep' : 'silenced';
+    for (const v of victims) {
+      const ok = rng.chance(0.6);
+      if (ok && !v.status.includes(status)) v.status.push(status);
+      events.push({ t: 'monsterCasts', group: gi, spellId, target: v.id, effect: ok ? status : 'resisted' });
+    }
+  }
 }

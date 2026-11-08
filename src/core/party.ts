@@ -47,7 +47,8 @@ export function createCharacter(spec: CharacterSpec, allocation: Stats, rng: Rng
   if (!eligibleClasses(stats, spec.alignment).includes(spec.classId)) {
     throw new Error(`class ${spec.classId} is not eligible with those attributes and alignment`);
   }
-  const maxHp = Math.max(3, rng.int(Math.ceil(cls.hpDie / 2), cls.hpDie) + Math.max(0, Math.floor((stats.vit - 8) / 3)));
+  // First-level characters are sturdier than a bare die roll: a full die plus a bonus roll, plus a vitality bonus.
+  const maxHp = Math.max(3, cls.hpDie + rng.int(1, Math.ceil(cls.hpDie / 2)) + Math.max(0, Math.floor((stats.vit - 8) / 3)));
   const casts = cls.school ? 2 : 0;
   return {
     id: `${slug(spec.name)}-${rng.int(1000, 9999)}`,
