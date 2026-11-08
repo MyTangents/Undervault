@@ -18,6 +18,12 @@ export interface SaveData {
   position: { levelId: string; pos: Pos; facing: number };
   day: number;
   settings: Settings;
+  /** tiles whose one-time effects are spent, as "levelId:x,y,z" */
+  triggered?: string[];
+  /** cells closed for good by collapses and floods, as "levelId:x,y,z" */
+  closed?: string[];
+  /** true if the party was in town when the game was saved */
+  inTown?: boolean;
 }
 
 /** The slice of the browser's Storage API we use, so tests can pass a fake. */
