@@ -18,7 +18,6 @@ import { DEFAULT_SETTINGS, type Settings } from '../../core/settings';
 import { clearSave, loadGame, saveGame, defaultStore, SAVE_KEY, type SaveData } from '../../core/save';
 import { renderChronicle } from '../../core/chronicle';
 import { DISCOVERIES } from '../../core/data';
-import type { TaleDef, Stats, Alignment } from '../../core/types';
 import type { MonsterGroup } from '../../core/combat/types';
 import { Hall, NoWebGLError } from '../hall/hall';
 import { Controller, type Command } from '../hall/controller';
@@ -29,8 +28,6 @@ import { downloadSave, loadFromFile, pickFile } from '../saveFile';
 
 const NOTICE_KEY = 'undervault.notice';
 const SETTINGS_KEY = 'undervault.settings';
-
-interface Creator { pool: number; alloc: Stats; name: string; raceId: string; alignment: Alignment; classId?: string }
 
 /** The whole game in the browser: owns the screens, the running Game, and the dungeon view. */
 export class App {
@@ -43,8 +40,6 @@ export class App {
   townMsgBad = false;
   selectedId: string | null = null;
   recruited = new Set<string>();
-  creator: Creator | null = null;
-  lastTale: TaleDef | null = null;
   // dungeon state
   private hall: Hall | null = null;
   private controller: Controller | null = null;
