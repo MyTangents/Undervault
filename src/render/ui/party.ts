@@ -14,7 +14,7 @@ export function memberCard(m: Character, onClick?: () => void, selected = false)
   const frac = m.maxHp > 0 ? Math.max(0, m.hp / m.maxHp) : 0;
   const trouble = [m.ash ? 'ash' : m.dead ? 'dead' : '', ...m.status.map((s) => STATUS_TEXT[s] ?? s)].filter(Boolean).join(', ');
   const casts = m.maxCharges.some((c) => c > 0) ? ` · ${m.charges.slice(0, 3).join('/')} charges` : '';
-  return h('div', { class: `member${m.dead || m.ash ? ' dead' : ''}`, style: selected ? 'background:#d9c68e' : null, onclick: onClick },
+  return h('div', { class: `member${m.dead || m.ash ? ' dead' : ''}`, style: selected ? 'background:#3a3020' : null, onclick: onClick },
     h('span', { class: 'nm' }, m.name),
     h('span', { class: 'mono' }, `${m.hp}/${m.maxHp}`),
     h('span', { class: 'meta' }, `Lv ${m.level} ${raceName(m.raceId)} ${className(m.classId)} · ${m.row}${casts}${trouble ? ` · ${trouble}` : ''}`),
