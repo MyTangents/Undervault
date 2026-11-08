@@ -1,6 +1,8 @@
 /** Crowhithe: a menu of places, each a framed screen with a face, a message window and printed commands. */
 import type { App } from './app';
 import type { KeyCommand } from './keys';
+import { h } from './dom';
+import { PLACES } from '../../core/town';
 import { placeLayout } from './places/layout';
 import type { PlaceScreen } from './places/layout';
 import { placeScreen as tavern } from './places/tavern';
@@ -48,6 +50,12 @@ function menuScreen(app: App): HTMLElement {
     blurb: 'A town on top of a hole. The lamps are lit, the Wardens are bored, and everyone is selling something.',
     spec: null,
     commands,
+    scene: () => [
+      ...Object.entries(PLACE_KEYS).map(([id, [key]]) =>
+        h('div', null, `${key.toUpperCase()}) ${PLACES.find((p) => p.id === id)?.name ?? 'The Party and its Packs'}`)),
+      h('div', null, 'E) Enter the Undervault'),
+      h('div', { class: 'dim' }, 'Esc) System'),
+    ],
   });
   app.setCommands(commands);
   lay.msg.say(app.townMsg || 'Where to?');

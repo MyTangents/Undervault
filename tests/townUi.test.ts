@@ -44,6 +44,12 @@ describe('the town menu', () => {
     expect(printed()).toEqual(['T)avern', 'F)orge', 'H)ouse of Ash', 'I)nn', "M)aud's", 'L)amp and Lung', 'P)arty and packs', 'E)nter the Undervault', 'Esc) System']);
   });
 
+  test('the menu itself lists every place with its key, so nobody has to find the command bar', () => {
+    townApp();
+    const text = document.querySelector('.sceneextra')?.textContent ?? '';
+    for (const s of ['T) The Sump Tap', 'F) Ferrule', 'H) The House of Ash', 'I) The Last Mattress', "M) Maud's", 'L) The Lamp and Lung', 'P) The Party', 'E) Enter the Undervault']) expect(text, s).toContain(s);
+  });
+
   test("each place shows its keeper's portrait and the place's printed commands equal its bound keys", () => {
     const app = townApp();
     const keepers: [string, string][] = [['t', 'dennis'], ['f', 'hobb'], ['h', 'ottoline'], ['i', 'wenna'], ['m', 'maud'], ['l', 'tamsin']];

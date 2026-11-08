@@ -86,6 +86,7 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 @media (max-width:900px){
   .townx{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:auto;grid-template-areas:"head" "left" "mid" "right" "bar";overflow:auto}
   .townx .face canvas{width:160px}
+  .townx .barslot,.dungeon2 .dbar,.combat2 .bottom{position:sticky;bottom:0;background:var(--bg);z-index:5;padding-top:.3em}
   .townx .left,.townx .mid,.townx .right{overflow:visible;min-height:auto}
   .townx .mid .msgwin{height:auto;min-height:6em;max-height:14em;overflow:auto}
 }
