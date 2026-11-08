@@ -29,8 +29,10 @@ meaningful way gets a face, drawn in code the way the monsters are.
 
 - Not a terminal emulator: no fixed 40x24 grid, no ASCII art, no enforced character-cell layout.
 - Not neon or "computer cyberpunk": the owner has already asked for that to be toned down. Glow is faint and warm.
-- No new game rules. `src/core` is untouched except where a screen needs a read-only helper. Save format stays v1: a
-  character's face is derived from its id, so nothing new is saved.
+- No new game rules, except the two the owner asked for about party order (see "Party order"): moving a member to another
+  slot, and the dead dropping to the bottom of the party after a fight. `src/core` changes only for those (`party.ts`,
+  `Game.finishEncounter`). Save format stays v1: party order is already the saved member order, and a character's face is
+  derived from its id, so nothing new is saved.
 - No party faces on the dungeon screen (owner: "in dungeon the party doesn't really need a picture on screen"). The dungeon
   roster is text only. My call: combat's roster is text only as well, so faces are a town and character-sheet thing.
 - Nothing copied from Wizardry: no names, no text. `tests/names.test.ts` keeps guarding that.
@@ -70,7 +72,7 @@ Space, which speed it up). A screen's printed commands and its bound keys come f
 |---|---|
 | Title | N)ew game, C)ontinue, L)oad from file, S)ettings. First key press or click starts sound and dismisses the notice. |
 | Town | One command per place, each with its own letter (Sump Tap, Forge, House of Ash, Last Mattress, Maud's, Lamp and Lung), P)arty and packs, E)nter the Undervault, and Esc for a system dialogue: S)ave to file, L)oad from file, O)ptions, Q)uit to title. Travel is instant, as now. |
-| Sump Tap (tavern) | R)ecruit (list of who is waiting, face of the highlighted one shown), N)ew character, D)ismiss, W) swap rows, L)eave. |
+| Sump Tap (tavern) | R)ecruit (list of who is waiting, face of the highlighted one shown), N)ew character, O)rder the party (see "Party order"), D)ismiss, L)eave. |
 | Character creator | A dialogue sequence: name, race (list), alignment (list), then attribute allocation (Up/Down picks an attribute, Left/Right or `-`/`+` changes it, bonus points shown), then class (list of eligible classes), then accept. Esc steps back one stage; stepping back to race resets the allocation, as changing race does today. `R)e-roll` the bonus points stays on the allocation stage, free as it is now (no new rule). The face updates live and matches the final face exactly (see Portraits). |
 | Forge | Pick who (1-6, or Left/Right) then B)uy, S)ell, I)dentify, L)eave. Buy and sell open item lists with prices; unaffordable rows are dimmed. Sell moves here from the Party and packs screen, as in the original shop. I)dentify is the existing Study rule (`identifyItem`, "only a Shade can"), not a paid service; it is reachable here and also from Party and packs. |
 | House of Ash | R)aise (list of the fallen with costs; ash needs the ash rite and a `Y)es` confirmation), L)eave. |
@@ -79,9 +81,26 @@ Space, which speed it up). A screen's printed commands and its bound keys come f
 | Lamp and Lung | H)ear a tale (buys a round), L)eave. The portrait shown is whoever is speaking the tale. |
 | Party and packs | Pick who (1-6 or Left/Right) then E)quip, U)nequip, S)tudy, L)eave (selling stays at the forge). The character sheet shows the face, attributes, hit points, spells, techniques and slots. |
 | Combat | See below. |
-| Dungeon | The 3D view keeps W/A/S/D, Q/E, R/F, Z/X, `[`/`]` and the arrows. New: C)amp opens a dialogue (I)nspect a member, S)ave to file, O)ptions, L)eave camp). Esc opens the same system dialogue as the town. Inspect is read-only. Layout (my call): the 3D view in a frame whose border takes the current area's palette colour; the automap in its own frame beside it with the storey keys; a message window under the view, which takes over from toasts (discoveries, events, falls, level changes, and the "dungeon view could not start" notice); a text-only roster strip along the bottom; and a printed command bar (`W/S walk  A/D turn  Q/E step  R/F stairs  Z/X look  C)amp`). The on-screen movement pad stays, so touch devices can still move. |
+| Dungeon | The 3D view keeps W/A/S/D, Q/E, R/F, Z/X, `[`/`]` and the arrows. New: C)amp opens a dialogue (I)nspect a member, R)eorder the party, S)ave to file, O)ptions, L)eave camp). Esc opens the same system dialogue as the town. Inspect is read-only. Layout (my call): the 3D view in a frame whose border takes the current area's palette colour; the automap in its own frame beside it with the storey keys; a message window under the view, which takes over from toasts (discoveries, events, falls, level changes, and the "dungeon view could not start" notice); a text-only roster strip along the bottom; and a printed command bar (`W/S walk  A/D turn  Q/E step  R/F stairs  Z/X look  C)amp`). The on-screen movement pad stays, so touch devices can still move. |
 | Settings | A list: Up/Down picks a setting, Left/Right adjusts a slider or flips a choice, Esc closes. Adds the Screen glow setting. |
 | Roll of the Gone, ending | Corporal Moss's face on the Roll. Any key continues; commands B)egin again / L)oad / T)itle on the Roll; B)ack to Crowhithe / S)ave / T)itle at the ending. |
+
+### Party order (owner's request, mid-design)
+
+The owner: "need to be able to reorder party so weaker members can be moved back. The fighters will normally lead and when
+someone dies, they move to the bottom of party."
+
+- The party is an ordered list of up to six. Slots 1 to 3 are the front rank and 4 to 6 the back rank, as the rules already
+  work today (`normalise` in `party.ts`). The roster strip marks which slots are front and which are back.
+- **Reorder:** `O)rder the party` at the Sump Tap and `R)eorder` in the dungeon camp. Pick a member from a list, then Up and Down
+  move them one slot at a time with the rank markers updating live; Enter drops them there, Escape puts everything back as it was.
+  Dead members can be moved too. No cost, no time passes.
+- **The dead sink:** when a fight ends (won, fled or wiped), every member who is dead or ash drops below everyone living,
+  keeping their relative order among the living and among the dead. The living shift up a slot, so the next in line steps
+  into the front rank if a front-rank member died. This is my reading of "move to the bottom"; it happens at the end of the
+  fight, not mid-round, so ranks do not change under the party during a fight. Falls and pits cannot kill (hit points
+  bottom out at 1), so combat is the only place deaths happen.
+- A raised member stays where the sinking left them (at the bottom) until the player moves them.
 
 ### Combat orders
 
@@ -165,6 +184,8 @@ thumbnails (redrawn only when a member's state changes, not every frame).
 - The dungeon gets a framed layout with a message window in place of toasts; the movement pad and automap stay.
 - Sell moves to the forge; I)dentify is the existing Study rule, available at the forge and on Party and packs.
 - The creator keeps its free bonus-point re-roll.
+- Party order: reorder at the tavern and in camp; the dead sink to the bottom at the end of a fight, not mid-round, so the
+  living shift up and a weaker member may land in the front rank until the player moves them back.
 
 ## Left to the builder
 
