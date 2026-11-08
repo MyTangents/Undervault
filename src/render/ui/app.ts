@@ -312,7 +312,11 @@ export class App {
 
   /* --------------------------------------------------------------- combat */
   private combatScreen(): HTMLElement {
-    return this.combat ? this.combat.el : h('div', { class: 'screen' });
+    const c = this.combat;
+    if (!c) return h('div', { class: 'screen' });
+    this.setCommands(() => c.commands());
+    this.msg = c.messages;
+    return c.el;
   }
 
   private startCombat(groups: MonsterGroup[], fixedKey?: string): void {
@@ -485,7 +489,6 @@ export class App {
     if (e.repeat && this.flow.screen !== 'dungeon') return;
     // Screens not yet moved onto the router keep their own key handling for now.
     const s = this.flow.screen;
-    if (s === 'combat') { this.combat?.key(e); return; }
     if (s !== 'dungeon' || !this.controller) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     const map: Record<string, Command> = {

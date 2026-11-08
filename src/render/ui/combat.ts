@@ -1,61 +1,102 @@
 import type { App } from './app';
 import { h } from './dom';
-import { legalOrders, type OrderKind } from './flow';
-import { className } from './party';
+import { CombatOrders, castable, spellAim, usable } from './combatOrders';
+import { openList } from './dialog';
+import { accentFor, commandBar, frame, messageWindow, rosterStrip } from './frame';
+import type { MessageWindow } from './frame';
+import type { KeyCommand } from './keys';
 import { createRng, type Rng } from '../../core/rng';
-import type { Character } from '../../core/types';
 import { ITEMS, SPELLS } from '../../core/data';
 import type { Game } from '../../core/game';
 import { resolveRound, startCombat, warnings } from '../../core/combat/engine';
 import type { CombatEvent, CombatState, MonsterGroup, Order } from '../../core/combat/types';
-import { canAct, groupLiving, isActive } from '../../core/combat/util';
+import { groupLiving, isActive } from '../../core/combat/util';
 import { autoOrders } from '../../core/sim';
 import { getPicture, PICTURE_H, PICTURE_W, type PictureState } from '../monster/picture';
-
-interface Row { kind: OrderKind; group: number; spellId: string; target: number; itemId: string }
 
 const WARN_TEXT: Record<string, string> = {
   redHp: 'Someone is badly hurt', lowCharges: 'Spells nearly spent', outnumbered: 'Outnumbered', monsterEnraged: 'They smell blood',
 };
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** One fight: orders for everyone, then the round plays out while the monster's picture reacts. */
+type Phase = 'orders' | 'playing' | 'over';
+
+/** One fight: orders asked of each member in turn, then the round plays out while the monster's picture reacts. */
 export class CombatScreen {
   readonly el: HTMLElement;
+  readonly messages: MessageWindow = messageWindow(9);
   private state: CombatState;
-  private rows = new Map<string, Row>();
+  private co: CombatOrders;
+  private lastOrders: Record<string, Order> = {};
   private selected = 0;
   private initial: number[];
-  private log: string[] = [];
-  private busy = false;
+  private phase: Phase = 'orders';
   private done = false;
+  private skip = false;
+  private outcome: 'won' | 'fled' | 'wiped' | null = null;
   // animations are driven by timestamps, so they finish on time even if the browser throttles frames
   private anim = { hitAt: -1e9, lungeAt: -1e9, dyingAt: -1e9, dyingGroup: -1 };
   private raf = 0;
   private rng: Rng = createRng(Date.now() & 0xffffff);
   private canvas: HTMLCanvasElement;
-  private ordersEl = h('div', { class: 'panel orders' });
   private groupsEl = h('div', { class: 'groups' });
-  private warnEl = h('div', { class: 'warn' });
-  private logEl = h('div', { class: 'log' });
-  private actionsEl = h('div', { class: 'row', style: 'margin-top:.6rem' });
+  private promptEl = h('div', { class: 'prompt' });
+  private barEl = h('div', { class: 'barslot' });
+  private rosterEl = h('div', { class: 'rosterslot' });
+  private sceneFrame: HTMLElement;
 
   constructor(private app: App, private game: Game, groups: MonsterGroup[], private fixedKey?: string) {
     this.state = startCombat(structuredClone(game.state.party), groups);
     this.initial = groups.map((g) => g.hp.reduce((a, b) => a + b, 0));
     this.canvas = h('canvas', { class: 'mon', width: PICTURE_W, height: PICTURE_H }) as HTMLCanvasElement;
+    this.co = new CombatOrders(this.state);
     this.say(groups.length === 1 ? `${this.countName(0)} come out of the dark.` : 'Several things come out of the dark at once.');
-    this.fillDefaults();
-    this.el = h('div', { class: 'screen combat' },
-      h('div', { class: 'stage' },
-        h('div', { class: 'left' }, h('div', { class: 'pic' }, this.canvas), this.groupsEl, this.warnEl, this.logEl),
-        h('div', { class: 'stack', style: 'overflow:auto' }, this.ordersEl, this.actionsEl)));
-    this.render();
+    this.sceneFrame = frame(groups[0]?.def.name ?? 'The dark', accentFor('dungeon'), h('div', { class: 'pic' }, this.canvas), this.groupsEl);
+    this.el = h('div', { class: 'screen combat2' },
+      h('div', { class: 'scene' }, this.sceneFrame),
+      h('div', { class: 'talk' }, frame('Words', accentFor('dungeon'), this.messages.el)),
+      h('div', { class: 'party' }, frame('The Party', accentFor('party'), this.rosterEl)),
+      h('div', { class: 'bottom' }, this.promptEl, this.barEl));
     this.loop();
     this.app.audio.play('door');
+    this.beginOrders();
   }
 
-  destroy(): void { this.done = true; cancelAnimationFrame(this.raf); }
+  destroy(): void {
+    this.done = true;
+    cancelAnimationFrame(this.raf);
+    this.app.router.locked = false;
+  }
+
+  /* ---------------------------------------------------------------- tests and the app */
+  /** The orders given so far this round (for tests). */
+  pending(): Record<string, Order> { return this.co.orders(); }
+  prompt(): string { return this.promptEl.textContent ?? ''; }
+  round(): number { return this.state.round; }
+
+  /** What the bar prints and the keys do: the same table. */
+  commands(): KeyCommand[] {
+    if (this.phase === 'over') {
+      const label = this.outcome === 'wiped' ? 'Face the Roll' : this.outcome === 'won' ? 'Onward' : 'Back into the dark';
+      return [{ key: 'Enter', label, run: () => this.app.combatDone(this.outcome!) }];
+    }
+    if (this.phase === 'playing') return [];
+    const m = this.co.current();
+    if (!m) return [];
+    const run: Record<string, () => void> = {
+      f: () => void this.chooseFight(), s: () => void this.chooseSpell(), p: () => this.give({ kind: 'parry' }),
+      u: () => void this.chooseUse(), r: () => this.give({ kind: 'run' }),
+    };
+    const cmds: KeyCommand[] = this.co.choices().map((c) => ({ key: c.key, label: c.label, enabled: c.enabled, run: run[c.key] }));
+    cmds.push(
+      { key: 't', label: 'Take back', enabled: Object.keys(this.co.orders()).length > 0, run: () => { this.co.takeBack(); this.refresh(); } },
+      { key: 'a', label: 'Auto', run: () => { this.co.autoFill(autoOrders(this.state)); this.advance(); } },
+      { key: 'Enter', label: 'Repeat', hidden: true, run: () => { if (this.co.repeat()) this.advance(); else this.say('Nothing to repeat.'); } },
+      { key: 'ArrowLeft', label: 'Previous group', hidden: true, run: () => this.cycleGroup(-1) },
+      { key: 'ArrowRight', label: 'Next group', hidden: true, run: () => this.cycleGroup(1) },
+    );
+    return cmds;
+  }
 
   /* ---------------------------------------------------------------- helpers */
   private name(id: string): string { return this.state.party.members.find((m) => m.id === id)?.name ?? 'Someone'; }
@@ -65,7 +106,8 @@ export class CombatScreen {
     const n = groupLiving(g);
     return `${n} ${g.def.name}${n === 1 ? '' : 's'}`;
   }
-  private say(line: string): void { this.log.push(line); if (this.log.length > 9) this.log.shift(); }
+  private say(line: string): void { this.messages.say(line); }
+  private livingGroups(): number[] { return this.state.groups.flatMap((g, i) => (groupLiving(g) > 0 ? [i] : [])); }
 
   private describe(e: CombatEvent): string | null {
     switch (e.t) {
@@ -95,126 +137,129 @@ export class CombatScreen {
   }
 
   /* ----------------------------------------------------------------- orders */
-  private active(): Character[] { return this.state.party.members.filter(canAct); }
+  /** Starts asking for orders (or, when nobody can act, goes straight to the round). */
+  private beginOrders(): void {
+    for (const w of warnings(this.state)) this.say(`! ${WARN_TEXT[w] ?? w}`);
+    this.advance();
+  }
 
-  private fillDefaults(): void {
-    const auto = autoOrders(this.state);
-    for (const m of this.active()) {
-      const o = auto[m.id] ?? { kind: 'parry' as const };
-      this.rows.set(m.id, {
-        kind: o.kind, group: o.kind === 'fight' ? o.group : this.firstLiving(),
-        spellId: o.kind === 'spell' ? o.spellId : '', target: o.kind === 'spell' ? o.target : 0, itemId: '',
+  /** After an order: ask the next member, or play the round once everyone has answered. */
+  private advance(): void {
+    if (this.co.done()) { void this.resolve(); return; }
+    this.phase = 'orders';
+    this.refresh();
+  }
+
+  private give(o: Order): void { this.co.answer(o); this.advance(); }
+
+  private async chooseFight(): Promise<void> {
+    const living = this.livingGroups();
+    if (living.length === 0) return;
+    let group = living[0];
+    if (living.length > 1) {
+      const i = await openList(this.app.host, {
+        title: 'Fight which?', accent: accentFor('dungeon'), start: Math.max(0, living.indexOf(this.selected)),
+        rows: living.map((gi) => ({ label: this.countName(gi), detail: this.state.groups[gi].asleep ? 'asleep' : '' })),
+        onMove: (n) => { this.selected = living[n]; this.refresh(); },
       });
+      if (i === null) return;
+      group = living[i];
     }
-  }
-  private firstLiving(): number { return Math.max(0, this.state.groups.findIndex((g) => groupLiving(g) > 0)); }
-
-  private toOrder(m: Character): Order {
-    const r = this.rows.get(m.id);
-    if (!r) return { kind: 'parry' };
-    switch (r.kind) {
-      case 'fight': return { kind: 'fight', group: r.group };
-      case 'spell': return { kind: 'spell', spellId: r.spellId, target: r.target };
-      case 'use': return { kind: 'use', itemId: r.itemId, target: r.target };
-      case 'run': return { kind: 'run' };
-      default: return { kind: 'parry' };
-    }
+    this.give({ kind: 'fight', group });
   }
 
-  /** Spell choices for a caster: each spell paired with each sensible target. */
-  private spellOptions(m: Character): { value: string; label: string; spellId: string; target: number }[] {
-    const out: { value: string; label: string; spellId: string; target: number }[] = [];
-    for (const id of m.known) {
-      const sp = SPELLS.find((x) => x.id === id);
-      if (!sp || (m.charges[sp.level - 1] ?? 0) <= 0) continue;
-      if (sp.discoveryId && !this.state.party.discoveries.includes(sp.discoveryId)) continue;
-      if (['damage', 'sleep', 'silence', 'identify'].includes(sp.kind)) {
-        this.state.groups.forEach((g, gi) => { if (groupLiving(g) > 0) out.push({ value: `${id}|${gi}`, label: `${sp.name} → ${this.countName(gi)}`, spellId: id, target: gi }); });
-      } else if (sp.kind === 'heal' && sp.target === 'ally') {
-        this.state.party.members.forEach((a, ai) => { if (isActive(a)) out.push({ value: `${id}|${ai}`, label: `${sp.name} → ${a.name} (${a.hp}/${a.maxHp})`, spellId: id, target: ai }); });
-      } else out.push({ value: `${id}|0`, label: `${sp.name} (the party)`, spellId: id, target: 0 });
-    }
-    return out;
+  private async chooseTarget(title: string): Promise<number | null> {
+    const allies = this.state.party.members.map((a, i) => ({ a, i })).filter(({ a }) => isActive(a));
+    if (allies.length <= 1) return allies[0]?.i ?? 0;
+    const k = await openList(this.app.host, {
+      title, accent: accentFor('dungeon'),
+      rows: allies.map(({ a }) => ({ label: a.name, detail: `${a.hp}/${a.maxHp}` })),
+    });
+    return k === null ? null : allies[k].i;
   }
 
-  private itemOptions(m: Character): { value: string; label: string; itemId: string; target: number }[] {
-    const out: { value: string; label: string; itemId: string; target: number }[] = [];
-    for (const id of new Set(m.inventory)) {
-      const it = ITEMS.find((i) => i.id === id);
-      if (it?.kind !== 'consumable') continue;
-      this.state.party.members.forEach((a, ai) => { if (isActive(a)) out.push({ value: `${id}|${ai}`, label: `${it.name} → ${a.name}`, itemId: id, target: ai }); });
+  private async chooseSpell(): Promise<void> {
+    const m = this.co.current();
+    if (!m) return;
+    const spells = castable(this.state, m);
+    const si = await openList(this.app.host, {
+      title: `${m.name} casts`, accent: accentFor('dungeon'),
+      rows: spells.map((sp) => ({ label: sp.name, detail: `level ${sp.level} · ${m.charges[sp.level - 1] ?? 0} left` })),
+    });
+    if (si === null) return;
+    const sp = spells[si];
+    const aim = spellAim(sp);
+    let target = 0;
+    if (aim === 'group') {
+      const living = this.livingGroups();
+      if (living.length > 1) {
+        const gi = await openList(this.app.host, {
+          title: `${sp.name} at which?`, accent: accentFor('dungeon'),
+          rows: living.map((g) => ({ label: this.countName(g), detail: this.state.groups[g].asleep ? 'asleep' : '' })),
+        });
+        if (gi === null) return;
+        target = living[gi];
+      } else target = living[0] ?? 0;
+    } else if (aim === 'ally') {
+      const t = await this.chooseTarget(`${sp.name} on whom?`);
+      if (t === null) return;
+      target = t;
     }
-    return out;
+    this.give({ kind: 'spell', spellId: sp.id, target });
   }
 
-  private orderRow(m: Character): HTMLElement {
-    const row = this.rows.get(m.id) ?? { kind: 'parry' as OrderKind, group: 0, spellId: '', target: 0, itemId: '' };
-    this.rows.set(m.id, row);
-    const legal = legalOrders(m);
-    const labels: Record<OrderKind, string> = { fight: 'Fight', spell: 'Cast', parry: 'Guard', use: 'Use item', run: 'Run' };
-    if (!legal.includes(row.kind)) row.kind = 'parry';
-    const kindSel = h('select', { disabled: this.busy, onchange: (e: Event) => { row.kind = (e.target as HTMLSelectElement).value as OrderKind; this.render(); } },
-      ...legal.map((k) => h('option', { value: k, selected: k === row.kind }, labels[k])));
-    let detail: HTMLElement | null = null;
-    if (row.kind === 'fight') {
-      detail = h('select', { disabled: this.busy, onchange: (e: Event) => { row.group = Number((e.target as HTMLSelectElement).value); } },
-        ...this.state.groups.map((g, i) => (groupLiving(g) > 0 ? h('option', { value: i, selected: i === row.group }, this.countName(i)) : null)));
-    } else if (row.kind === 'spell') {
-      const opts = this.spellOptions(m);
-      if (!opts.some((o) => o.value === `${row.spellId}|${row.target}`) && opts[0]) { row.spellId = opts[0].spellId; row.target = opts[0].target; }
-      detail = h('select', { disabled: this.busy, onchange: (e: Event) => { const o = opts.find((x) => x.value === (e.target as HTMLSelectElement).value)!; row.spellId = o.spellId; row.target = o.target; } },
-        ...opts.map((o) => h('option', { value: o.value, selected: o.value === `${row.spellId}|${row.target}` }, o.label)));
-    } else if (row.kind === 'use') {
-      const opts = this.itemOptions(m);
-      if (!opts.some((o) => o.value === `${row.itemId}|${row.target}`) && opts[0]) { row.itemId = opts[0].itemId; row.target = opts[0].target; }
-      detail = h('select', { disabled: this.busy, onchange: (e: Event) => { const o = opts.find((x) => x.value === (e.target as HTMLSelectElement).value)!; row.itemId = o.itemId; row.target = o.target; } },
-        ...opts.map((o) => h('option', { value: o.value, selected: o.value === `${row.itemId}|${row.target}` }, o.label)));
-    }
-    return h('div', { class: 'o' },
-      h('div', null, h('b', null, m.name), h('div', { class: 'dim', style: 'font-size:.75rem' }, `${className(m.classId)} · ${m.hp}/${m.maxHp}`)),
-      h('div', null, kindSel, detail));
+  private async chooseUse(): Promise<void> {
+    const m = this.co.current();
+    if (!m) return;
+    const items = usable(m);
+    const ii = await openList(this.app.host, {
+      title: `${m.name} uses`, accent: accentFor('dungeon'),
+      rows: items.map((id) => ({ label: ITEMS.find((i) => i.id === id)?.name ?? id })),
+    });
+    if (ii === null) return;
+    const t = await this.chooseTarget('On whom?');
+    if (t === null) return;
+    this.give({ kind: 'use', itemId: items[ii], target: t });
+  }
+
+  private cycleGroup(dir: 1 | -1): void {
+    const living = this.livingGroups();
+    if (living.length < 2) return;
+    const at = Math.max(0, living.indexOf(this.selected));
+    this.selected = living[(at + dir + living.length) % living.length];
+    this.anim.dyingGroup = -1;
+    this.refresh();
   }
 
   /* ----------------------------------------------------------------- render */
-  private render(): void {
+  private refresh(): void {
     const s = this.state;
+    this.sceneFrame.querySelector('.ftitle')!.textContent = this.gname(this.selected);
     this.groupsEl.replaceChildren(...s.groups.flatMap((g, i) => (groupLiving(g) > 0 || i === this.selected
-      ? [h('button', { class: `quiet${i === this.selected ? ' sel' : ''}`, onclick: () => { this.selected = i; this.anim.dyingGroup = -1; this.render(); } },
+      ? [h('button', { class: `quiet${i === this.selected ? ' sel' : ''}`, type: 'button', onclick: () => { this.selected = i; this.anim.dyingGroup = -1; this.refresh(); } },
         groupLiving(g) > 0 ? `${this.countName(i)}${g.asleep ? ' (asleep)' : ''}${g.silenced ? ' (silenced)' : ''}` : `${g.def.name} (gone)`)]
       : [])));
-    this.warnEl.replaceChildren(...warnings(s).map((w) => h('span', { class: 'chip' }, WARN_TEXT[w] ?? w)));
-    this.logEl.replaceChildren(...this.log.map((l) => h('div', null, l)));
-    this.ordersEl.style.display = this.done ? 'none' : '';
-    if (this.done) { this.ordersEl.replaceChildren(); return; }
-    this.ordersEl.replaceChildren(
-      h('h3', null, this.busy ? 'The round plays out…' : `Round ${s.round + 1}: orders`),
-      ...this.active().map((m) => this.orderRow(m)),
-      ...s.party.members.filter((m) => isActive(m) && !canAct(m)).map((m) => h('div', { class: 'dim' }, `${m.name} cannot act.`)),
-    );
-    this.actionsEl.replaceChildren(
-      h('button', { disabled: this.busy, onclick: () => void this.resolve() }, 'Resolve the round (Enter)'),
-      h('button', { class: 'quiet', disabled: this.busy, onclick: () => { this.fillDefaults(); this.render(); } }, 'Suggest'),
-      h('button', { class: 'quiet', disabled: this.busy, onclick: () => { for (const r of this.rows.values()) r.kind = 'run'; this.render(); } }, 'Everyone runs'),
-    );
+    const m = this.phase === 'orders' ? this.co.current() : null;
+    this.rosterEl.replaceChildren(rosterStrip(s.party, { selectedId: m?.id }));
+    this.promptEl.textContent = this.phase === 'over' ? '' : this.phase === 'playing' ? 'The round plays out. Space) hurry it' : m ? `${m.name}'s options:` : '';
+    this.barEl.replaceChildren(commandBar(this.commands()));
   }
 
   /* ------------------------------------------------------------- the round */
-  key(e: KeyboardEvent): void {
-    if (e.key === 'Enter' && !this.busy && !this.done) { e.preventDefault(); void this.resolve(); }
-  }
-
   private async resolve(): Promise<void> {
-    if (this.busy || this.done) return;
-    this.busy = true;
-    const orders: Record<string, Order> = {};
-    for (const m of this.active()) orders[m.id] = this.toOrder(m);
-    const res = resolveRound(this.state, orders, this.rng);
+    if (this.phase === 'playing' || this.done) return;
+    this.phase = 'playing';
+    this.skip = false;
+    this.app.router.locked = true;
+    this.app.router.onSkip = () => { this.skip = true; };
+    this.lastOrders = this.co.orders();
+    const res = resolveRound(this.state, this.lastOrders, this.rng);
     this.state = res.state;
-    this.render();
+    this.refresh();
     for (const e of res.events) {
       this.apply(e);
-      this.render();
-      await sleep(this.done ? 0 : 340);
+      this.refresh();
+      await sleep(this.done || this.skip ? 0 : 340);
       if (this.done) return;
     }
     for (let i = 0; i < this.state.groups.length; i++) {
@@ -224,13 +269,14 @@ export class CombatScreen {
       // save the party as it stands now: a death is permanent the moment it happens, even if the tab is closed
       this.game.commitRound(this.state.party);
       this.app.autosave();
-      if (groupLiving(this.state.groups[this.selected]) === 0) this.selected = this.firstLiving();
-      this.fillDefaults();
-      this.busy = false;
-      this.render();
+      if (groupLiving(this.state.groups[this.selected]) === 0) this.selected = Math.max(0, this.livingGroups()[0] ?? 0);
+      this.app.router.locked = false;
+      this.co = new CombatOrders(this.state, this.lastOrders);
+      this.beginOrders();
       return;
     }
-    await sleep(700);
+    await sleep(this.skip ? 0 : 700);
+    if (this.done) return;
     this.finish(res.outcome);
   }
 
@@ -246,15 +292,15 @@ export class CombatScreen {
   }
 
   private finish(outcome: 'won' | 'fled' | 'wiped'): void {
-    this.busy = true;
-    this.done = true;
+    this.phase = 'over';
+    this.outcome = outcome;
+    this.app.router.locked = false;
     this.game.finishEncounter({ outcome, xp: this.state.xpPool, gold: this.state.goldPool, party: this.state.party, groups: this.state.groups }, this.fixedKey);
     if (outcome === 'won') this.say(`Victory. ${this.state.xpPool} experience and ${this.state.goldPool} gold, shared out.`);
     else if (outcome === 'fled') this.say('The party gets away, breathing hard.');
     else this.say('That was the last of them. The Wardens will read the names at dawn.');
-    this.render();
-    this.actionsEl.replaceChildren(h('button', { onclick: () => this.app.combatDone(outcome) },
-      outcome === 'wiped' ? 'Face the Roll' : outcome === 'won' ? 'Onward' : 'Back into the dark'));
+    this.state = { ...this.state, party: this.game.state.party };
+    this.refresh();
   }
 
   /* ------------------------------------------------------------- the picture */
@@ -265,14 +311,14 @@ export class CombatScreen {
     const lunge = Math.max(0, 1 - (now - this.anim.lungeAt) / 600);
     const dying = Math.min(1, Math.max(0, (now - this.anim.dyingAt) / 1500));
     const g = this.state.groups[this.selected];
-    if (g) {
+    const ctx = this.canvas.getContext('2d');
+    if (g && ctx) {
       const left = g.hp.reduce((a, b) => a + b, 0), total = Math.max(1, this.initial[this.selected]);
       const ps: PictureState = {
         hit, lunge, damage: Math.max(0, Math.min(1, 1 - left / total)),
         dying: this.anim.dyingGroup === this.selected ? dying : groupLiving(g) === 0 ? 1 : 0,
       };
-      const ctx = this.canvas.getContext('2d')!;
-      getPicture(g.def.pictureId).draw(ctx, t, ps);
+      try { getPicture(g.def.pictureId).draw(ctx, t, ps); } catch { /* a picture that cannot draw never ends a fight */ }
       const shake = hit > 0 ? (Math.random() - 0.5) * 9 * hit : 0;
       this.canvas.style.transform = `translate(${shake}px,${shake * 0.5}px)`;
     }

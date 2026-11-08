@@ -85,6 +85,19 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
   .townx .face canvas{width:160px}
 }
 
+/* combat */
+.combat2{padding:12px;gap:10px;display:grid;grid-template-columns:minmax(16rem,26rem) 1fr minmax(15rem,22rem);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"scene talk party" "bottom bottom bottom";background:radial-gradient(ellipse at 50% 20%,#1a140e 0,#07060a 70%)}
+.combat2 .scene{grid-area:scene}.combat2 .talk{grid-area:talk}.combat2 .party{grid-area:party}.combat2 .bottom{grid-area:bottom}
+.combat2 .scene,.combat2 .talk,.combat2 .party{min-height:0;padding:14px 9px 8px;overflow-x:hidden;overflow-y:auto}
+.combat2 .talk>.frame{height:100%}.combat2 .talk .msgwin{max-height:none;height:100%;font-size:1.02rem}
+.combat2 .pic{display:flex;justify-content:center;background:#000;border:1px solid var(--line)}
+.combat2 canvas.mon{width:100%;max-width:340px;aspect-ratio:192/240;image-rendering:pixelated;display:block}
+.combat2 .groups{display:flex;gap:.4rem;flex-wrap:wrap;justify-content:center;margin-top:.6rem}
+.combat2 .groups button.sel{outline:2px solid var(--gold)}
+.combat2 .prompt{padding:.2em .3em;color:var(--accent);min-height:1.5em}
+.combat2 .cmdbar{font-size:1.1rem;gap:.3em 1.6em}
+@media (max-width:900px){.combat2{grid-template-columns:1fr;grid-template-rows:auto;grid-template-areas:"scene" "talk" "party" "bottom";overflow:auto}}
+
 /* title */
 .title{align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at 50% 38%,#1c1710 0,#09070a 62%,#050406 100%)}
 .title h1{font-size:clamp(2.2rem,8vw,5rem);color:#e9d9ae;text-shadow:0 0 14px #b8923e55,0 3px 0 #000;letter-spacing:.14em;margin:0}
