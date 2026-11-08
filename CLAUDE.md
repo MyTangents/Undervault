@@ -11,3 +11,5 @@
 - Title string is one constant (`src/title.ts`); the title may change before a public launch (trademark check first).
 - Look: vector, dungeon-like not cyberpunk, muted earthy palettes, low bloom, more fog. Tone: R-rated storytelling, not explicit.
 - Do not create a GitHub remote or enable Pages without the owner's go.
+- UI: every screen's printed commands come from one `KeyCommand` table; use `KeyRouter` and the dialogues in `src/render/ui`;
+  faces are in `src/render/portrait`; no party faces in the dungeon or combat. Design: `docs/superpowers/specs/2026-11-08-wizardry-ui-design.md`.

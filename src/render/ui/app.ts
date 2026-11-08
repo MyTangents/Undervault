@@ -9,6 +9,7 @@ import type { UiHost } from './dialog';
 import { accentFor, commandBar, frame, getGlow, messageWindow, rosterStrip, setGlow } from './frame';
 import type { MessageWindow } from './frame';
 import { openCamp } from './camp';
+import { endingScreen, rollScreen } from './endings';
 import { openOptions, openSystem } from './system';
 import { CombatScreen } from './combat';
 import { Game, type ArriveResult } from '../../core/game';
@@ -37,7 +38,6 @@ export class App {
   // town state
   townPlace = 'menu';
   townMsg = '';
-  townMsgBad = false;
   selectedId: string | null = null;
   recruited = new Set<string>();
   // dungeon state
@@ -189,7 +189,7 @@ export class App {
     this.townMsg = '';
     this.recruited = new Set();
     if (g.isOver()) { // a wiped party goes to the Roll, not into a dungeon where nothing can happen
-      this.flow = { ...this.flow, screen: 'gameover', under: null, hasGame: true };
+      this.flow = { ...this.flow, screen: 'gameover', hasGame: true };
       this.render();
       return;
     }
@@ -217,7 +217,6 @@ export class App {
     const g = this.game!;
     try { g.enterDungeon(); } catch (e) {
       this.townMsg = e instanceof Error ? e.message : 'The party cannot go down.';
-      this.townMsgBad = true;
       this.render();
       return;
     }
@@ -288,30 +287,14 @@ export class App {
   }
 
   /* ----------------------------------------------------------- game over */
-  private gameOverScreen(): HTMLElement {
-    const lines = this.game ? renderChronicle(this.game.state.chronicle, 6) : [];
-    return h('div', { class: 'screen end' }, h('div', { class: 'panel stack' },
-      h('h2', null, 'The Roll of the Gone'),
-      h('div', null, 'Corporal Moss reads the names at dawn, one more than yesterday. Yours are in the book now.'),
-      h('h3', null, 'What was written'), ...lines.map((l) => h('div', { class: 'tale' }, l)),
-      h('div', { class: 'row' },
-        h('button', { onclick: () => this.newGame() }, 'Begin again'),
-        h('button', { class: 'quiet', onclick: () => void this.loadFromFile() }, 'Load from file'),
-        h('button', { class: 'quiet', onclick: () => this.dispatch({ type: 'toTitle' }) }, 'Title'))));
-  }
+  private gameOverScreen(): HTMLElement { return rollScreen(this); }
+  private endingScreen(): HTMLElement { return endingScreen(this); }
 
-  private endingScreen(): HTMLElement {
-    const found = this.game ? DISCOVERIES.filter((d) => this.game!.state.party.discoveries.includes(d.id)).length : 0;
-    const lines = this.game ? renderChronicle(this.game.state.chronicle, 8) : [];
-    return h('div', { class: 'screen end' }, h('div', { class: 'panel stack' },
-      h('h2', null, 'Settled, for now'),
-      h('div', null, 'The Quiet Below asks whether you have come about the account. You say yes, and mean it. A receipt, warm as a hand, is pressed into yours. The walls go quiet. Somewhere far above, a clerk puts down his pen.'),
-      h('div', { class: 'dim' }, `This is the end of the demo. You found ${found} of ${DISCOVERIES.length} things the Vault was keeping.`),
-      h('h3', null, 'The chronicle'), ...lines.map((l) => h('div', { class: 'tale' }, l)),
-      h('div', { class: 'row' },
-        h('button', { onclick: () => { this.game?.returnToTown(); this.flow = { ...this.flow, screen: 'town' }; this.render(); } }, 'Back to Crowhithe'),
-        h('button', { class: 'quiet', onclick: () => this.saveToFile() }, 'Save to file'),
-        h('button', { class: 'quiet', onclick: () => this.dispatch({ type: 'toTitle' }) }, 'Title'))));
+  /** From the ending back to the town: the demo is not the end of the save. */
+  backToTown(): void {
+    this.game?.returnToTown();
+    this.flow = { ...this.flow, screen: 'town' };
+    this.render();
   }
 
   /* --------------------------------------------------------------- combat */
@@ -370,7 +353,7 @@ export class App {
       h('aside', null, mapFrame, padFrame),
       h('div', { class: 'wf' }, wordsFrame),
       h('div', { class: 'rf' }, frame('The Party', accentFor('party'), this.rosterEl)),
-      h('div', { class: 'bar' }, this.barEl));
+      h('div', { class: 'dbar' }, this.barEl));
     this.updateDungeon();
     return shell;
   }

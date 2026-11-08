@@ -89,14 +89,19 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .dungeon2{padding:12px;gap:10px;display:grid;grid-template-columns:1fr minmax(15rem,21rem);grid-template-rows:minmax(0,1fr) auto auto auto;grid-template-areas:"vf aside" "wf wf" "rf rf" "bar bar"}
 .dungeon2 .vf{grid-area:vf;min-height:0;min-width:0;padding:14px 9px 8px}.dungeon2 .vf>.frame{height:100%}.dungeon2 .vf .fbody{padding:0}
 .dungeon2 aside{grid-area:aside;display:flex;flex-direction:column;gap:14px;padding:14px 9px 8px;overflow:auto;min-height:0}
-.dungeon2 .wf{grid-area:wf;padding:6px 9px}.dungeon2 .rf{grid-area:rf;padding:6px 9px}.dungeon2 .bar{grid-area:bar}
+.dungeon2 .wf{grid-area:wf;padding:6px 9px}.dungeon2 .rf{grid-area:rf;padding:6px 9px}.dungeon2 .dbar{grid-area:bar}
 .dungeon2 .view{position:relative;width:100%;height:100%;min-height:12rem;background:#000}
-.dungeon2 canvas.gl{width:100%;height:100%;display:block}
+.dungeon2 canvas.gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+.dungeon2 .vf{overflow:hidden}
 .dungeon2 .hud{position:absolute;left:12px;top:10px;font-size:.9rem;text-shadow:0 1px 3px #000;pointer-events:none;color:var(--text)}
-.dungeon2 canvas.map{width:100%;aspect-ratio:1;background:#0a0806;border:1px solid var(--line);image-rendering:pixelated;display:block}
+.dungeon2 canvas.map{width:100%;max-height:30vh;object-fit:contain;aspect-ratio:1;background:#0a0806;border:1px solid var(--line);image-rendering:pixelated;display:block}
 .dungeon2 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem}
-.dungeon2 .msgwin{min-height:5.5em;max-height:7.5em}
-.dungeon2 .roster{display:grid;grid-template-columns:repeat(2,1fr);gap:1px .8rem}
+.dungeon2 .msgwin{min-height:3.2em;max-height:4.8em;font-size:.95rem}
+.dungeon2 .frame{padding:1em .6em .5em}
+.dungeon2 .wf,.dungeon2 .rf{padding:4px 9px}
+.dungeon2 .roster{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-flow:row;gap:0 .8rem;font-size:.82rem}
+.dungeon2 .roster .rrow{grid-template-columns:1.4em 1fr auto auto}.dungeon2 .roster .rrow .st{display:none}
+.dungeon2 .pad button{padding:.15em 0}
 .dungeon2 .legend{opacity:.7;font-size:.85rem;padding:.1em .2em}
 @media (max-width:900px){
   .dungeon2{grid-template-columns:1fr;grid-template-rows:auto;grid-template-areas:"vf" "aside" "wf" "rf" "bar";overflow:auto}
@@ -117,6 +122,13 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .combat2 .cmdbar{font-size:1.1rem;gap:.3em 1.6em}
 @media (max-width:900px){.combat2{grid-template-columns:1fr;grid-template-rows:auto;grid-template-areas:"scene" "talk" "party" "bottom";overflow:auto}}
 
+/* the Roll and the ending */
+.endx{align-items:center;justify-content:center;padding:14px;background:radial-gradient(ellipse at 50% 38%,#1c1612 0,#07060a 72%);overflow:auto}
+.endx>.frame{width:min(46rem,94vw);max-height:94vh;overflow:auto;padding:1.4em 1.2em 1em}
+.endx .face{display:flex;justify-content:center;padding-bottom:.6em}
+.endx .face canvas{width:200px;aspect-ratio:128/160;image-rendering:pixelated;border:1px solid var(--line);background:#000}
+.endx .msgwin{max-height:none}
+
 /* title */
 .title{align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at 50% 38%,#1c1710 0,#09070a 62%,#050406 100%)}
 .title h1{font-size:clamp(2.2rem,8vw,5rem);color:#e9d9ae;text-shadow:0 0 14px #b8923e55,0 3px 0 #000;letter-spacing:.14em;margin:0}
@@ -125,70 +137,7 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .title .menu{display:flex;flex-direction:column;gap:.6rem;width:min(18rem,80vw)}
 .title .notice{position:absolute;bottom:14px;left:0;right:0;font-size:.8rem;opacity:.55;padding:0 1rem}
 
-/* town */
-.town{padding:12px;gap:10px}
-.town .top{display:flex;justify-content:space-between;align-items:baseline;padding:0 .3em}
-.town .body{display:grid;grid-template-columns:15rem 1fr 19rem;gap:10px;flex:1;min-height:0}
-.town .nav{display:flex;flex-direction:column;gap:.5rem}
-.town .nav button{text-align:left}
-.town .nav button.here{border-color:var(--gold);font-weight:bold;background:color-mix(in srgb,var(--gold) 20%,transparent)}
-.town .main{overflow:auto}
-.town .side{overflow:auto}
-.tbl{width:100%;border-collapse:collapse}
-.tbl td,.tbl th{padding:.2em .4em;border-bottom:1px solid var(--line);text-align:left}
-.tbl tr:last-child td{border-bottom:none}
+/* tales (the chronicle on the ending screens) */
 .tale{border-left:3px solid var(--gold);padding-left:.8em;margin:.6em 0;font-style:italic}
-.tone-funny{border-color:#c49a2e}.tone-sad{border-color:#5a6f8a}.tone-uplifting{border-color:#6a9a52}.tone-memorable{border-color:#9a4a8a}
 
-/* party cards */
-.member{display:grid;grid-template-columns:1fr auto;gap:.1em .5em;padding:.35em .3em;border-bottom:1px solid var(--line);cursor:default}
-.member:last-child{border-bottom:none}
-.member .nm{font-weight:bold}
-.member.dead .nm{text-decoration:line-through;opacity:.6}
-.member .meta{grid-column:1/3;font-size:.8rem;opacity:.75}
-.bar{height:6px;background:#2a2118;border-radius:3px;overflow:hidden;grid-column:1/3}
-.bar>i{display:block;height:100%;background:var(--ok)}
-.bar.low>i{background:var(--bad)}
-
-/* dungeon */
-.dungeon{flex-direction:row}
-.dungeon .view{position:relative;flex:1;min-width:0;background:#000}
-.dungeon canvas.gl{width:100%;height:100%;display:block}
-.dungeon .hud{position:absolute;left:12px;top:10px;font-size:.95rem;text-shadow:0 1px 3px #000;pointer-events:none;color:var(--text)}
-.dungeon .hud b{letter-spacing:.1em}
-.dungeon .hints{position:absolute;left:12px;bottom:8px;font-size:.72rem;opacity:.55;pointer-events:none}
-.dungeon aside{width:20rem;display:flex;flex-direction:column;gap:8px;padding:8px;background:var(--bg);border-left:2px solid var(--line);overflow:auto}
-.dungeon aside .panel{padding:.5em .6em}
-.dungeon canvas.map{width:100%;aspect-ratio:1;background:#0a0806;border:1px solid #3a3020;image-rendering:pixelated;display:block}
-.chron{font-size:.78rem;line-height:1.35;max-height:11rem;overflow:auto}
-.chron div+div{margin-top:.3em}
-
-/* combat */
-.combat{padding:10px;gap:10px;background:radial-gradient(ellipse at 50% 20%,#1e1810 0,#080604 70%)}
-.combat .stage{display:grid;grid-template-columns:1fr 24rem;gap:10px;flex:1;min-height:0}
-.combat .left{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:0}
-.combat .pic{border:3px double var(--accent,#9a9482);padding:5px;background:#000;box-shadow:0 0 26px #0009}
-.combat canvas.mon{height:min(46vh,480px);aspect-ratio:192/240;image-rendering:pixelated;display:block}
-.combat .groups{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
-.combat .groups button.sel{outline:2px solid var(--gold)}
-.combat .log{width:100%;max-width:40rem;min-height:7.5rem;font-size:.95rem;line-height:1.45;padding:.4em .7em;background:#0b0907cc;border:1px solid #3a3020;border-radius:3px}
-.combat .log div{opacity:.6}.combat .log div:last-child{opacity:1}
-.combat .warn{display:flex;gap:.4rem;flex-wrap:wrap;min-height:1.6rem}
-.chip{background:#4a1d17;color:#f0c8b8;border:1px solid #8a3a2a;border-radius:10px;padding:.05em .6em;font-size:.78rem}
-.orders .o{display:grid;grid-template-columns:7rem 1fr;gap:.3rem;align-items:center;padding:.25em 0;border-bottom:1px solid var(--line)}
-.orders .o:last-child{border:none}
-.orders .o select{width:100%;margin-bottom:2px}
-
-/* settings, ending */
-.overlay{align-items:center;justify-content:center;background:#000c}
-.overlay .panel{width:min(34rem,92vw);max-height:92vh;overflow:auto}
-.set{display:grid;grid-template-columns:7rem 1fr 3rem;gap:.4rem .6rem;align-items:center;margin:.4em 0}
-.end{align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at 50% 38%,#241c18 0,#0a0807 70%)}
-.end .panel{max-width:46rem;text-align:left}
-
-@media (max-width:900px){
-  .town .body{grid-template-columns:1fr}
-  .dungeon{flex-direction:column}.dungeon aside{width:auto;flex-direction:row;overflow-x:auto;max-height:36vh}
-  .combat .stage{grid-template-columns:1fr}
-}
 `;
