@@ -127,14 +127,17 @@ const NAME_MAX = 24;
 export function promptName(host: UiHost, title: string, accent?: string, initial = ''): Promise<string | null> {
   let text = initial.slice(0, NAME_MAX);
   const shown = h('span', { class: 'typed' });
+  // A hidden text field catches what a phone keyboard or an input method types; it stays in step with `text`.
+  const field = h('input', { type: 'text', class: 'namefield', maxlength: NAME_MAX, autocomplete: 'off', spellcheck: 'false', 'aria-label': title }) as HTMLInputElement;
+  field.addEventListener('input', () => { text = field.value.slice(0, NAME_MAX); paint(); });
   const el = h('div', { class: 'dialog name', style: accent ? `--accent:${accent}` : null },
     h('div', { class: 'dlg-title' }, title),
-    h('div', { class: 'field' }, '> ', shown, h('span', { class: 'cursor' }, '_')),
+    h('div', { class: 'field', onclick: () => field.focus() }, '> ', shown, h('span', { class: 'cursor' }, '_'), field),
     h('div', { class: 'hint' }, 'Enter) accept   Esc) back'));
-  const paint = () => { shown.textContent = text; };
+  function paint(): void { shown.textContent = text; if (field.value !== text) field.value = text; }
   paint();
   let finish: (v: string | null) => void = () => {};
-  return open<string | null>(host, el, 'name', (done) => {
+  const p = open<string | null>(host, el, 'name', (done) => {
     finish = done;
     return {
       typing: true,
@@ -152,4 +155,6 @@ export function promptName(host: UiHost, title: string, accent?: string, initial
       },
     };
   });
+  field.focus();
+  return p;
 }

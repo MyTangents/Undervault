@@ -124,6 +124,22 @@ describe('dialogues', () => {
     expect(await r).toBe('x'.repeat(24));
   });
 
+  test('promptName also takes what a phone keyboard or an input method types into its field', async () => {
+    const h = host();
+    const p = promptName(h, 'Name');
+    const field = h.layer.querySelector('input.namefield') as HTMLInputElement;
+    expect(field).not.toBeNull();
+    expect(document.activeElement).toBe(field);
+    field.value = 'Zedna';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(h.layer.textContent).toContain('Zedna');
+    h.router.handle('s'); // a key press goes on from there
+    expect(h.layer.textContent).toContain('Zednas');
+    expect(field.value).toBe('Zednas');
+    h.router.handle('Enter');
+    expect(await p).toBe('Zednas');
+  });
+
   test('a dialogue is modal: keys never reach the layer under it, and it is removed from the DOM and router when closed', async () => {
     const h = host();
     const run = vi.fn();

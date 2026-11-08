@@ -43,7 +43,7 @@ const LANTERN = ['#0a0806', '#40301a', '#c09a4a', '#fff6d0'];
 export const PEOPLE: Record<PersonId, PersonRecipe> = {
   dennis: { id: 'dennis', race: 'human', ramp: AMBER, mood: 1, extras: ['towel', 'tankard'],
     look: { hair: 1, hairTone: 150, age: 0.9, beard: 0.7, scar: 0.9, brow: 0.8, jaw: 0.8, mouthW: 1, nose: 1, noseW: 0.9, eyeGap: 0.4 } },
-  hobb: { id: 'hobb', race: 'barrowfolk', ramp: EMBER, mood: 0, extras: ['apron', 'forgeglow'],
+  hobb: { id: 'hobb', race: 'barrowfolk', ramp: EMBER, mood: 0, extras: ['apron'],
     look: { hair: 0, beard: 0.95, age: 0.5, brow: 1, jaw: 1, nose: 1, noseW: 0.8, eyeGap: 0.2, scar: 0.7 } },
   ottoline: { id: 'ottoline', race: 'human', ramp: ASH, mood: 1, gear: 'votary', extras: ['smudge'],
     look: { hair: 0, beard: 0, age: 0.6, brow: 0.2, jaw: 0.3, nose: 0, noseW: 0.2, eyeGap: 0.6, scar: 0, mouthW: 0.4 } },

@@ -494,7 +494,9 @@ export class App {
   /* ----------------------------------------------------------------- keys */
   private onKey(e: KeyboardEvent): void {
     if (!this.flow.audioUnlocked) this.firstGesture();
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+    // a focused text field keeps its letters; only Enter and Escape still go to the dialogue around it
+    const inField = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement;
+    if (inField && e.key !== 'Enter' && e.key !== 'Escape') return;
     if (this.router.handle(e.key, { repeat: e.repeat, ctrl: e.ctrlKey, alt: e.altKey, meta: e.metaKey })) { e.preventDefault(); return; }
     if (this.router.top()?.name !== 'screen') return; // a dialogue is open: the dungeon must not walk behind it
     if (e.repeat && this.flow.screen !== 'dungeon') return;

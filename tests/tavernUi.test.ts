@@ -172,6 +172,19 @@ describe('the character creator', () => {
     expect(app.townPlace).toBe('tavern');
   });
 
+  test('a focused name field passes Enter and Escape on to the dialogue but keeps its letters', async () => {
+    const app = tavern(3);
+    press('n');
+    const field = document.querySelector('input.namefield') as HTMLInputElement;
+    field.value = 'Quill';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'q', bubbles: true, cancelable: true })); // a letter typed in the field is not a command
+    expect(app.townPlace).toBe('tavern');
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await flush();
+    expect(document.querySelector('.dialog')?.textContent).toMatch(/race/i);
+  });
+
   test('walking the creator signs a character on whose face is the one that was previewed', async () => {
     const app = tavern(3);
     press('n');

@@ -63,6 +63,8 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .title .cmdbar .cmd{font-size:1.1rem;padding:.3em 1em;border:1px solid var(--accent)}
 .title .cmdbar .cmd.off{border-color:var(--line)}
 .dialog .field{font-size:1.2rem;padding:.4em 0}.dialog .cursor{animation:blink 1s steps(1) infinite}
+.dialog .field{position:relative}
+.dialog input.namefield{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;border:0;background:transparent;color:transparent;caret-color:transparent;font-size:16px}
 @keyframes blink{50%{opacity:0}}
 .dialog .hint{opacity:.6;font-size:.82rem}
 .cmd.off{opacity:.35}
@@ -81,8 +83,10 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .townx .sceneextra{font-size:.88rem;line-height:1.45;padding:.3em .2em}
 .townx .cmdbar{border-top:1px solid var(--line);padding-top:.5em;font-size:1.05rem;gap:.3em 1.6em}
 @media (max-width:900px){
-  .townx{grid-template-columns:1fr;grid-template-rows:auto;grid-template-areas:"head" "left" "mid" "right" "bar";overflow:auto}
+  .townx{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:auto;grid-template-areas:"head" "left" "mid" "right" "bar";overflow:auto}
   .townx .face canvas{width:160px}
+  .townx .left,.townx .mid,.townx .right{overflow:visible;min-height:auto}
+  .townx .mid .msgwin{height:auto;min-height:6em;max-height:14em;overflow:auto}
 }
 
 /* the dungeon */
@@ -104,9 +108,13 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .dungeon2 .pad button{padding:.15em 0}
 .dungeon2 .legend{opacity:.7;font-size:.85rem;padding:.1em .2em}
 @media (max-width:900px){
-  .dungeon2{grid-template-columns:1fr;grid-template-rows:auto;grid-template-areas:"vf" "aside" "wf" "rf" "bar";overflow:auto}
+  .dungeon2{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:auto;grid-template-areas:"vf" "aside" "wf" "rf" "bar";overflow:auto}
   .dungeon2 .view{height:46vh}
-  .dungeon2 aside{flex-direction:row;overflow-x:auto}
+  .dungeon2 .vf{overflow:visible;min-height:auto}.dungeon2 aside{min-height:auto}
+  .dungeon2 aside{flex-direction:column;overflow:visible}
+  .dungeon2 aside>.frame:nth-child(2){order:-1}
+  .dungeon2 .pad button{padding:.7em 0}
+  .dungeon2 .roster{grid-template-columns:repeat(2,1fr)}
 }
 
 /* combat */
@@ -120,7 +128,8 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .combat2 .groups button.sel{outline:2px solid var(--gold)}
 .combat2 .prompt{padding:.2em .3em;color:var(--accent);min-height:1.5em}
 .combat2 .cmdbar{font-size:1.1rem;gap:.3em 1.6em}
-@media (max-width:900px){.combat2{grid-template-columns:1fr;grid-template-rows:auto;grid-template-areas:"scene" "talk" "party" "bottom";overflow:auto}}
+@media (max-width:900px){.combat2{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:auto;grid-template-areas:"scene" "talk" "party" "bottom";overflow:auto}
+  .combat2 .scene,.combat2 .talk,.combat2 .party{overflow:visible;min-height:auto}.combat2 canvas.mon{max-width:240px}.combat2 .talk .msgwin{height:auto;min-height:6em;max-height:14em;overflow:auto}}
 
 /* the Roll and the ending */
 .endx{align-items:center;justify-content:center;padding:14px;background:radial-gradient(ellipse at 50% 38%,#1c1612 0,#07060a 72%);overflow:auto}
