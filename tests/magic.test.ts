@@ -103,3 +103,37 @@ describe('castSpell', () => {
     expect(s.groups[0].hp.every((h) => h < 30)).toBe(true);
   });
 });
+
+describe('using items in a fight', () => {
+  const hurtParty = () => {
+    const healer = { ...hero('Brannoc'), inventory: ['mending-draught', 'short-sword'] };
+    const hurt = { ...withHp(hero('Hurt'), 30), hp: 5 };
+    return startCombat(partyOf(2, (i) => (i === 0 ? healer : hurt)), [makeGroup(rat, 1, rng())]);
+  };
+
+  test('a free cast heals without a known spell or a spare charge, and spends nothing', () => {
+    const s = hurtParty();
+    const before = s.party.members[0].charges.slice();
+    const ev = castSpell(s, s.party.members[0].id, 'mend', 1, rng(), { free: true });
+    expect(ev[0]).toMatchObject({ t: 'cast' });
+    expect(s.party.members[1].hp).toBeGreaterThan(5);
+    expect(s.party.members[0].charges).toEqual(before);
+  });
+
+  test('a use order drinks the draught: the target heals and the item is gone', async () => {
+    const { resolveRound } = await import('../src/core/combat/engine');
+    const s = hurtParty();
+    const orders = { [s.party.members[0].id]: { kind: 'use' as const, itemId: 'mending-draught', target: 1 } };
+    const res = resolveRound(s, orders, rng(3));
+    expect(res.state.party.members[1].hp).toBeGreaterThan(5);
+    expect(res.state.party.members[0].inventory).toEqual(['short-sword']);
+  });
+
+  test('using an item you do not carry does nothing', async () => {
+    const { resolveRound } = await import('../src/core/combat/engine');
+    const s = hurtParty();
+    const orders = { [s.party.members[0].id]: { kind: 'use' as const, itemId: 'iron-cap', target: 1 } };
+    const res = resolveRound(s, orders, rng(3));
+    expect(res.state.party.members[1].hp).toBeLessThanOrEqual(5);
+  });
+});

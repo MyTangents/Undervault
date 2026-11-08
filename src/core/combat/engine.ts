@@ -111,7 +111,13 @@ export function resolveRound(s0: CombatState, orders: Record<string, Order>, rng
         const killed = damageMonster(s, gi, firstLiving(g), dmg, rng);
         events.push({ t: 'hit', actor: m.id, group: gi, dmg, killed });
       } else if (o.kind === 'spell') events.push(...castSpell(s, m.id, o.spellId, o.target, rng));
-      else if (o.kind === 'use') events.push({ t: 'note', text: `${m.name} fumbles with an item.` });
+      else if (o.kind === 'use') {
+        const it = ITEMS.find((i) => i.id === o.itemId);
+        if (it?.kind === 'consumable' && it.spellId && m.inventory.includes(o.itemId)) {
+          events.push(...castSpell(s, m.id, it.spellId, o.target, rng, { free: true }));
+          m.inventory.splice(m.inventory.indexOf(o.itemId), 1);
+        } else events.push({ t: 'note', text: `${m.name} fumbles with an item.` });
+      }
     } else {
       const g = s.groups[a.gi];
       const count = groupLiving(g);

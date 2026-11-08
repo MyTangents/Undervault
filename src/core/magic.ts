@@ -8,18 +8,23 @@ import { damageMonster, firstLiving, groupLiving, isActive, roll } from './comba
  * `target` is a monster group index for damage, sleep, silence and identify spells,
  * and a party slot for single-target heals. Party-wide spells ignore it.
  */
-export function castSpell(s: CombatState, casterId: string, spellId: string, target: number, rng: Rng): CombatEvent[] {
+export function castSpell(
+  s: CombatState, casterId: string, spellId: string, target: number, rng: Rng, opts: { free?: boolean } = {},
+): CombatEvent[] {
   const caster = s.party.members.find((m) => m.id === casterId);
   const spell = SPELLS.find((x) => x.id === spellId);
   const fizzle = (reason: FizzleReason): CombatEvent[] => [{ t: 'fizzle', actor: casterId, spellId, reason }];
   if (!caster || !spell) return fizzle('unknown');
   if (!isActive(caster) || caster.status.includes('asleep') || caster.status.includes('paralysed')) return fizzle('asleep');
-  if (caster.status.includes('silenced')) return fizzle('silenced');
-  if (!caster.known.includes(spellId)) return fizzle('unknown');
-  if (spell.discoveryId && !s.party.discoveries.includes(spell.discoveryId)) return fizzle('locked');
-  if ((caster.charges[spell.level - 1] ?? 0) <= 0) return fizzle('no charge');
+  // A free cast is an item doing the casting: it needs no known spell and no charge, and works even when silenced.
+  if (!opts.free) {
+    if (caster.status.includes('silenced')) return fizzle('silenced');
+    if (!caster.known.includes(spellId)) return fizzle('unknown');
+    if (spell.discoveryId && !s.party.discoveries.includes(spell.discoveryId)) return fizzle('locked');
+    if ((caster.charges[spell.level - 1] ?? 0) <= 0) return fizzle('no charge');
+  }
 
-  const spend = () => { caster.charges[spell.level - 1] -= 1; };
+  const spend = () => { if (!opts.free) caster.charges[spell.level - 1] -= 1; };
   const group = s.groups[target];
   const needsGroup = ['damage', 'sleep', 'silence', 'identify'].includes(spell.kind);
   if (needsGroup && (!group || groupLiving(group) === 0)) return fizzle('no target');
