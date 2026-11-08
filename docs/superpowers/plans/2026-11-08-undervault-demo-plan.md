@@ -22,7 +22,7 @@
 - Dungeon look: vector, dungeon-like not cyberpunk; muted earthy palettes per area; neon reserved for magic; modest bloom; no CRT scanlines or glowing floor grid by default; HUD looks like parchment, ink and dim metal.
 - Monsters never appear in the halls; a fight cuts to a raster picture (classic Western RPG style, not anime). Art is code-first; generated images acceptable if code is not good enough. The picture layer is swappable.
 - Automap is a setting with two choices, `on` and `off`; **default `on`**; it shows height.
-- Saves live in browser local storage with export and import. Audio starts only after the first click or key press. A quality setting lowers bloom.
+- Saves live in browser local storage **and can be saved to a file and loaded from a file** (owner request: play on any device in a browser; the save file works on any device). Audio starts only after the first click or key press. A quality setting lowers bloom.
 - Static site hosting; desktop keyboard first; no phone or touch controls. No procedural world generation; no deep creature or body simulation.
 - Tone: gritty, violent, crude, R-rated storytelling, not explicit; a short content notice on first load.
 - All tunable numbers (flicker, bloom, fog, lamp) are settings or constants, never buried.
@@ -175,9 +175,9 @@
 **Files:** Create `src/core/save.ts`, `tests/save.test.ts`
 
 **Interfaces:**
-- Produces: `interface SaveData { version: 1; party; chronicle; automaps: Record<string,string>; position; day; settings }`; `saveGame(s: SaveData, store?: StorageLike): { ok: boolean; message?: string }`; `loadGame(store?: StorageLike): { data: SaveData | null; message?: string }`; `exportSave(s): string`; `importSave(text): { data: SaveData | null; message?: string }`; migration hook by `version`.
+- Produces: `interface SaveData { version: 1; party; chronicle; automaps: Record<string,string>; position; day; settings }`; `saveGame(s: SaveData, store?: StorageLike): { ok: boolean; message?: string }`; `loadGame(store?: StorageLike): { data: SaveData | null; message?: string }`; `exportSave(s): string` (JSON with a `game: "undervault"` marker); `importSave(text): { data: SaveData | null; message?: string }`; `saveToFile(s: SaveData): void` (downloads `undervault-<party>-day<n>.json`); `loadFromFile(file: File): Promise<{ data: SaveData | null; message?: string }>`; migration hook by `version`.
 
-- [ ] **Step 1:** Tests: round-trip; a storage that throws on read and write yields `{ok:false, message}` and `{data:null, message}` with no thrown error; corrupt JSON and an unknown future `version` yield a fresh game with a message; import rejects a non-save file.
+- [ ] **Step 1:** Tests: round-trip; a storage that throws on read and write yields `{ok:false, message}` and `{data:null, message}` with no thrown error; corrupt JSON and an unknown future `version` yield a fresh game with a message; import rejects a non-save file and a JSON file whose `game` marker is not `undervault`; `exportSave` then `importSave` returns identical data (so a file saved on one device loads on another).
 - [ ] **Step 2–5:** FAIL, implement, PASS, commit `feat: save, load, export, import`.
 
 ### Task 14: Vector hall renderer
@@ -221,7 +221,7 @@
 **Files:** Create `src/render/ui/{flow.ts,title.ts,town.ts,roster.ts,hud.ts,combat.ts,settings.ts}`, `src/main.ts`, `tests/flow.test.ts`
 
 **Interfaces:**
-- Produces: `type Screen = 'title'|'town'|'roster'|'dungeon'|'combat'|'settings'|'gameover'`; `reduce(state: AppState, action: AppAction): AppState` (pure flow; `title` requires the first click to unlock audio and shows the content notice); combat screen: order phase for each character, then a resolve playback of `CombatEvent`s with the monster picture reacting, `warnings` shown as colour and text, run always available; HUD in parchment and ink style.
+- Produces: `type Screen = 'title'|'town'|'roster'|'dungeon'|'combat'|'settings'|'gameover'`; `reduce(state: AppState, action: AppAction): AppState` (pure flow; `title` requires the first click to unlock audio and shows the content notice); title and settings screens have **Save to file** and **Load from file** buttons (title also offers Load); combat screen: order phase for each character, then a resolve playback of `CombatEvent`s with the monster picture reacting, `warnings` shown as colour and text, run always available; HUD in parchment and ink style.
 - [ ] **Step 1:** Tests: title → town → dungeon → combat → town transitions; a wiped party goes to `gameover`; `run` is always a valid combat action; opening settings preserves the underlying screen; the content notice appears once per browser.
 - [ ] **Step 2–5:** FAIL, implement, PASS. Manually click through the flow in the dev server. Commit `feat: screens and game flow`.
 

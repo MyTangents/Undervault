@@ -152,8 +152,7 @@ Written from memory; verify details when designing each system.
   Generated images with code-driven animation would give more detail. **The art method for the full bestiary is not yet
   decided.**
 - Sound: generated in code (browser audio), including bleeps, torch crackle and drones.
-- Hosting: a static host (GitHub Pages, Netlify or Cloudflare Pages). Saves in browser local storage, with export and
-  import. A quality setting lowers bloom for weaker computers. Audio starts after the first click or key press.
+- Hosting: a static host (GitHub Pages, Netlify or Cloudflare Pages). Saves go in browser local storage and can also be saved to a file and loaded from a file, so a game can move between devices (the owner's decision: play on any device in a browser). A quality setting lowers bloom for weaker computers. Audio starts after the first click or key press.
 
 ## The spike (throwaway, not part of the game)
 
