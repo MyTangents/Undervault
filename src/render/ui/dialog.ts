@@ -124,8 +124,8 @@ export function confirmBox(host: UiHost, text: string, accent?: string): Promise
 
 const NAME_MAX = 24;
 
-export function promptName(host: UiHost, title: string, accent?: string): Promise<string | null> {
-  let text = '';
+export function promptName(host: UiHost, title: string, accent?: string, initial = ''): Promise<string | null> {
+  let text = initial.slice(0, NAME_MAX);
   const shown = h('span', { class: 'typed' });
   const el = h('div', { class: 'dialog name', style: accent ? `--accent:${accent}` : null },
     h('div', { class: 'dlg-title' }, title),
