@@ -10,13 +10,13 @@ export const SPELLS: SpellDef[] = [
   { id: 'ash-gust', name: 'Ash Gust', school: 'arcane', level: 2, kind: 'damage', target: 'group', power: [2, 5] },
   { id: 'hush', name: 'Hush', school: 'arcane', level: 2, kind: 'silence', target: 'group', power: [0, 0] },
   { id: 'name-thing', name: 'Name the Thing', school: 'arcane', level: 2, kind: 'identify', target: 'single', power: [0, 0] },
-  { id: 'kiln-roar', name: 'Kiln Roar', school: 'arcane', level: 3, kind: 'damage', target: 'group', power: [4, 6], discoveryId: 'cinder-codex' },
+  { id: 'kiln-roar', name: 'Kiln Roar', school: 'arcane', level: 3, kind: 'damage', target: 'group', power: [4, 6], discoveryId: 'lienholders-primer' },
   { id: 'slip-knot', name: 'Slip the Knot', school: 'arcane', level: 3, kind: 'escape', target: 'party', power: [0, 0] },
   // sacred
   { id: 'mend', name: 'Mend', school: 'sacred', level: 1, kind: 'heal', target: 'ally', power: [1, 8] },
   { id: 'rebuke', name: 'Rebuke', school: 'sacred', level: 1, kind: 'damage', target: 'single', power: [1, 6] },
   { id: 'deeper-mend', name: 'Deeper Mend', school: 'sacred', level: 2, kind: 'heal', target: 'ally', power: [3, 8] },
   { id: 'still-tongue', name: 'Still Tongue', school: 'sacred', level: 2, kind: 'silence', target: 'single', power: [0, 0] },
-  { id: 'mass-mend', name: 'Mass Mend', school: 'sacred', level: 3, kind: 'heal', target: 'party', power: [2, 8], discoveryId: 'martyrs-psalter' },
+  { id: 'mass-mend', name: 'Mass Mend', school: 'sacred', level: 3, kind: 'heal', target: 'party', power: [2, 8], discoveryId: 'tally-hymnal' },
   { id: 'lantern-ward', name: 'Lantern Ward', school: 'sacred', level: 3, kind: 'buff', target: 'party', power: [0, 0] },
 ];

@@ -36,6 +36,10 @@ export interface Party {
   members: Character[];
   gold: number;
   discoveries: string[];
+  /** item ids the party has identified */
+  identified?: string[];
+  /** tale ids the party has already heard */
+  heardTales?: string[];
 }
 
 export interface RaceDef {

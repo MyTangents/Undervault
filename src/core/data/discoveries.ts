@@ -1,30 +1,33 @@
 import type { DiscoveryDef } from '../types';
 
-/** Things the party can find below. Each opens options, not raw numbers. Texts are placeholders until the content pass. */
+/**
+ * Things the party can find below. Each opens options rather than raw numbers (see the story kit, section 7).
+ * Where they are found is set by the level files; the tales in tales.ts point toward them.
+ */
 export const DISCOVERIES: DiscoveryDef[] = [
   {
-    id: 'cinder-codex', name: 'The Cinder Codex', kind: 'knowledge',
-    text: 'A scorched ledger of spells nobody has had permission to cast in three hundred years.',
+    id: 'lienholders-primer', name: "The Lienholders' Primer on Loans", kind: 'knowledge',
+    text: 'Chiselled into a wall of the Receiving Hall: how to cast from tomorrow\'s reserves. Strong now, weaker later, and the bill always arrives.',
     unlocks: [{ kind: 'spell', spellId: 'kiln-roar' }],
   },
   {
-    id: 'martyrs-psalter', name: "The Martyr's Psalter", kind: 'knowledge',
-    text: 'Hymns written for the dying, with margin notes by people who clearly lived.',
+    id: 'tally-hymnal', name: "The Tally-Singers' Hymnal", kind: 'knowledge',
+    text: 'Held in the hands of a skeleton in the Drainage Shrine. The songs keep the count, and sung properly they turn losses into mercy.',
     unlocks: [{ kind: 'spell', spellId: 'mass-mend' }],
   },
   {
-    id: 'toll-blade', name: "The Tollkeeper's Blade", kind: 'weapon',
-    text: 'It collects what it is owed. Mostly from whoever is holding it.',
-    unlocks: [{ kind: 'technique', id: 'toll-strike' }],
+    id: 'overdraft-blade', name: 'The Overdraft Blade', kind: 'weapon',
+    text: 'It hits harder than steel should. The damage is borrowed, and it shows up later on whoever swung it.',
+    unlocks: [{ kind: 'technique', id: 'borrowed-blow' }],
   },
   {
-    id: 'debt-seal', name: 'The Debt-Seal', kind: 'relic',
-    text: 'A wax seal that has never melted. Whoever carries it is, legally, someone else\'s property.',
-    unlocks: [{ kind: 'path', id: 'sealbearer' }],
+    id: 'quiets-receipt', name: "The Quiet's Receipt", kind: 'relic',
+    text: 'Given by the voice in the walls to a party that said yes. It acknowledges payments, and every death is an installment.',
+    unlocks: [{ kind: 'path', id: 'installment' }],
   },
   {
-    id: 'ledger-fragment', name: 'A Torn Page of the Ledger', kind: 'lore',
-    text: 'The page shows the sum owed. Somebody has crossed it out and written a larger one.',
+    id: 'saint-orrels-ledger', name: "Saint Orrel's Ledger", kind: 'lore',
+    text: 'A saint tried to write down everything the Vault owed and ran out of pages. The last entry is a key.',
     unlocks: [{ kind: 'shop', itemId: 'sealed-ledger-key' }],
   },
 ];

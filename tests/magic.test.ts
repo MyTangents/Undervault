@@ -60,7 +60,7 @@ describe('castSpell', () => {
     const c = caster({ known: ['kiln-roar'], charges: [0, 0, 2, 0, 0, 0, 0] });
     const s = fight(c);
     expect(castSpell(s, c.id, 'kiln-roar', 0, rng())[0]).toMatchObject({ reason: 'locked' });
-    s.party.discoveries.push('cinder-codex');
+    s.party.discoveries.push('lienholders-primer');
     expect(castSpell(s, c.id, 'kiln-roar', 0, rng())[0]).toMatchObject({ t: 'cast' });
   });
 
