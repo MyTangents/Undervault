@@ -57,6 +57,11 @@ html:not([data-glow]) .frame{box-shadow:0 0 10px color-mix(in srgb,var(--accent)
 .dialog .row.off{opacity:.4}
 .dialog .dlg-text{margin-bottom:.8em;line-height:1.45}
 .dialog .cmds{display:flex;gap:1.5em}
+.dialog.options .meter{letter-spacing:.05em;color:var(--accent);margin-right:.6em}
+.dialog.options .step{padding:0 .5em;margin-left:.4em}
+.title .cmdbar{flex-direction:column;align-items:center;gap:.5rem}
+.title .cmdbar .cmd{font-size:1.1rem;padding:.3em 1em;border:1px solid var(--accent)}
+.title .cmdbar .cmd.off{border-color:var(--line)}
 .dialog .field{font-size:1.2rem;padding:.4em 0}.dialog .cursor{animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 .dialog .hint{opacity:.6;font-size:.82rem}

@@ -30,7 +30,7 @@ export function townScreen(app: App): HTMLElement {
     h('button', { onclick: () => app.enterDungeon() }, 'Enter the Undervault ▾'),
     h('button', { class: 'quiet', onclick: () => app.saveToFile() }, 'Save to file'),
     h('button', { class: 'quiet', onclick: () => void app.loadFromFile() }, 'Load from file'),
-    h('button', { class: 'quiet', onclick: () => app.dispatch({ type: 'openSettings' }) }, 'Settings'),
+    h('button', { class: 'quiet', onclick: () => void app.openOptions() }, 'Settings'),
   );
 
   const side = h('div', { class: 'side stack' },

@@ -3,6 +3,12 @@ import { SUBTITLE, TITLE_WORD } from '../../title';
 import { h } from './dom';
 import { initialState, reduce, type AppAction, type AppState } from './flow';
 import { townScreen } from './town';
+import { KeyRouter } from './keys';
+import type { KeyCommand } from './keys';
+import type { UiHost } from './dialog';
+import { commandBar, getGlow, setGlow } from './frame';
+import type { MessageWindow } from './frame';
+import { openOptions, openSystem } from './system';
 import { CombatScreen } from './combat';
 import { partyPanel } from './party';
 import { Game, type ArriveResult } from '../../core/game';
@@ -53,6 +59,13 @@ export class App {
   private toastTimer = 0;
   private hudEl: HTMLElement | null = null;
   private sideEl: HTMLElement | null = null;
+  // keyboard
+  readonly router = new KeyRouter();
+  readonly host: UiHost;
+  /** the current screen's message window, if it has one */
+  msg: MessageWindow | null = null;
+  private screenCommands: () => KeyCommand[] = () => [];
+  private listeners: [EventTarget, string, EventListener, AddEventListenerOptions?][] = [];
 
   constructor(private root: HTMLElement) {
     let seen = false;
@@ -63,13 +76,39 @@ export class App {
     const style = document.createElement('style');
     style.textContent = CSS;
     document.head.append(style);
-    window.addEventListener('keydown', (e) => this.onKey(e));
-    window.addEventListener('pointerdown', () => this.firstGesture(), { once: true });
-    document.addEventListener('visibilitychange', () => this.audio.onVisibilityChange(document.hidden));
-    window.addEventListener('resize', () => this.hall?.resize(this.glCanvas()?.clientWidth ?? 800, this.glCanvas()?.clientHeight ?? 600));
+    setGlow(getGlow());
+    const layer = h('div', { id: 'ui-layer' });
+    document.body.append(layer);
+    this.host = { router: this.router, layer };
+    this.router.push({ name: 'screen', commands: () => this.screenCommands() });
+    this.listeners = [
+      [window, 'keydown', (e) => this.onKey(e as KeyboardEvent)],
+      [window, 'pointerdown', () => this.firstGesture(), { once: true }],
+      [document, 'visibilitychange', () => this.audio.onVisibilityChange(document.hidden)],
+      [window, 'resize', () => this.hall?.resize(this.glCanvas()?.clientWidth ?? 800, this.glCanvas()?.clientHeight ?? 600)],
+    ];
+    for (const [t, type, fn, opts] of this.listeners) t.addEventListener(type, fn, opts);
   }
 
   start(): void { this.render(); }
+
+  /** Detaches the app from the page: its key handlers and dialogue layer. (Tests make many apps in one page.) */
+  dispose(): void {
+    for (const [t, type, fn] of this.listeners) t.removeEventListener(type, fn);
+    this.listeners = [];
+    this.teardownDungeon();
+    this.combat?.destroy();
+    this.host.layer.remove();
+  }
+
+  /** What the current screen prints and binds: one table. */
+  currentCommands(): KeyCommand[] { return this.screenCommands(); }
+  setCommands(f: () => KeyCommand[]): void { this.screenCommands = f; }
+
+  /** Says a line in the current screen's message window; screens without one still get a toast. */
+  say(line: string): void { if (this.msg) this.msg.say(line); else this.toast(line); }
+  openSystem(): Promise<void> { return openSystem(this); }
+  openOptions(): Promise<void> { return openOptions(this); }
 
   /* ------------------------------------------------------------- settings */
   settings(): Settings { return this.game?.state.settings ?? this.defaultSettings; }
@@ -205,19 +244,16 @@ export class App {
 
   private render(): void {
     const s = this.flow;
-    if (s.screen !== 'dungeon' && s.screen !== 'settings') this.teardownDungeon();
-    if (s.screen === 'settings' && s.under !== 'dungeon') this.teardownDungeon();
+    if (s.screen !== 'dungeon') this.teardownDungeon();
+    this.msg = null;
+    const system: KeyCommand[] = [{ key: 'Escape', label: 'System', run: () => void this.openSystem() }];
+    this.screenCommands = () => (s.screen === 'town' || s.screen === 'dungeon' ? system : []);
     if (s.screen !== 'combat' && this.combat) { this.combat.destroy(); this.combat = null; }
 
     if (s.screen === 'dungeon') {
       if (this.hall && this.viewEl) { this.root.replaceChildren(this.dungeonShell(true)); this.updateSide(); return; }
       this.root.replaceChildren(this.dungeonShell(false));
       requestAnimationFrame(() => this.startView());
-      return;
-    }
-    if (s.screen === 'settings') {
-      if (s.under === 'dungeon' && this.viewEl) { this.root.append(this.settingsScreen()); return; }
-      this.root.replaceChildren(this.settingsScreen());
       return;
     }
     const el = s.screen === 'title' ? this.titleScreen()
@@ -231,42 +267,20 @@ export class App {
   /* ---------------------------------------------------------------- title */
   private titleScreen(): HTMLElement {
     const hasSave = (() => { try { return !!defaultStore().getItem(SAVE_KEY); } catch { return false; } })();
+    const cmds: KeyCommand[] = [
+      { key: 'n', label: 'New game', run: () => this.newGame() },
+      { key: 'c', label: 'Continue', enabled: hasSave, run: () => this.continueGame() },
+      { key: 'l', label: 'Load from file', run: () => void this.loadFromFile() },
+      { key: 's', label: 'Settings', run: () => void this.openOptions() },
+    ];
+    this.screenCommands = () => cmds;
     return h('div', { class: 'screen title' },
       h('h1', null, TITLE_WORD),
       h('h2', null, SUBTITLE),
       h('p', { class: 'blurb' }, 'Beneath the town of Crowhithe there is a hole that was dug on purpose, nine hundred years ago, by people who kept ledgers. Six go down. Most do not come up.'),
-      h('div', { class: 'menu' },
-        h('button', { onclick: () => this.newGame() }, 'New game'),
-        h('button', { disabled: !hasSave, onclick: () => this.continueGame() }, 'Continue'),
-        h('button', { class: 'quiet', onclick: () => void this.loadFromFile() }, 'Load from file'),
-        h('button', { class: 'quiet', onclick: () => this.dispatch({ type: 'openSettings' }) }, 'Settings')),
+      h('div', { class: 'menu' }, commandBar(cmds)),
       this.flow.noticeSeen ? null : h('p', { class: 'notice' },
-        'Content notice: this is a grim game with violence, crude language and dark humour (R-rated storytelling, nothing explicit). Click anywhere to begin; sound starts on your first click.'));
-  }
-
-  /* ------------------------------------------------------------- settings */
-  private settingsScreen(): HTMLElement {
-    const cur = this.settings();
-    const set = (patch: Partial<Settings>) => this.setSettings({ ...this.settings(), ...patch });
-    const slider = (label: string, key: 'bloom' | 'flicker' | 'fog' | 'lamp', min: number, max: number, step: number) => {
-      const out = h('span', { class: 'mono' }, String(cur[key]));
-      return [h('span', null, label),
-        h('input', { type: 'range', min, max, step, value: cur[key], oninput: (e: Event) => { const v = Number((e.target as HTMLInputElement).value); out.textContent = String(v); set({ [key]: v } as Partial<Settings>); } }),
-        out];
-    };
-    return h('div', { class: 'screen overlay' }, h('div', { class: 'panel stack' },
-      h('h3', null, 'Settings'),
-      h('div', { class: 'set' }, ...slider('Bloom', 'bloom', 0, 2, 0.05), ...slider('Torch flicker', 'flicker', 0, 2, 0.05), ...slider('Fog', 'fog', 0.03, 0.6, 0.01), ...slider('Lantern', 'lamp', 0, 2, 0.05)),
-      h('div', { class: 'row' }, 'Quality ',
-        h('select', { onchange: (e: Event) => set({ quality: (e.target as HTMLSelectElement).value as Settings['quality'] }) },
-          h('option', { value: 'normal', selected: cur.quality === 'normal' }, 'Normal'), h('option', { value: 'low', selected: cur.quality === 'low' }, 'Low (no bloom, for slower machines)'))),
-      h('div', { class: 'row' }, 'Automap ',
-        h('select', { onchange: (e: Event) => set({ automap: (e.target as HTMLSelectElement).value as Settings['automap'] }) },
-          h('option', { value: 'on', selected: cur.automap === 'on' }, 'On (fills in as you explore)'), h('option', { value: 'off', selected: cur.automap === 'off' }, 'Off (draw your own)'))),
-      h('div', { class: 'row' },
-        h('button', { class: 'quiet', disabled: !this.game, onclick: () => this.saveToFile() }, 'Save to file'),
-        h('button', { class: 'quiet', onclick: () => void this.loadFromFile() }, 'Load from file')),
-      h('div', { class: 'row' }, h('button', { onclick: () => { this.root.querySelector('.overlay')?.remove(); this.dispatch({ type: 'closeSettings' }); } }, 'Close'))));
+        'Content notice: this is a grim game with violence, crude language and dark humour (R-rated storytelling, nothing explicit). Press any key or click to begin; sound starts on your first key press or click.'));
   }
 
   /* ----------------------------------------------------------- game over */
@@ -322,7 +336,7 @@ export class App {
     this.viewEl = h('div', { class: 'view' });
     this.hudEl = h('div', { class: 'hud' });
     this.viewEl.append(h('canvas', { class: 'gl' }), this.hudEl,
-      h('div', { class: 'hints' }, 'W/S walk · A/D turn · Q/E sidestep · R/F stairs · Z/X look · [ ] map storey · Esc settings'));
+      h('div', { class: 'hints' }, 'W/S walk · A/D turn · Q/E sidestep · R/F stairs · Z/X look · [ ] map storey · Esc system'));
     this.mapZ = g.state.pos.z;
     return h('div', { class: 'screen dungeon' }, this.viewEl, this.sideBar());
   }
@@ -345,7 +359,7 @@ export class App {
       h('div', { class: 'panel' }, h('h3', null, 'Chronicle'), h('div', { class: 'chron', id: 'chronbox' })),
       h('div', { class: 'row' },
         h('button', { class: 'quiet', onclick: () => this.saveToFile() }, 'Save to file'),
-        h('button', { class: 'quiet', onclick: () => this.dispatch({ type: 'openSettings' }) }, 'Settings')));
+        h('button', { class: 'quiet', onclick: () => void this.openOptions() }, 'Settings')));
     return this.sideEl;
   }
 
@@ -465,11 +479,15 @@ export class App {
   /* ----------------------------------------------------------------- keys */
   private onKey(e: KeyboardEvent): void {
     if (!this.flow.audioUnlocked) this.firstGesture();
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+    if (this.router.handle(e.key, { repeat: e.repeat, ctrl: e.ctrlKey, alt: e.altKey, meta: e.metaKey })) { e.preventDefault(); return; }
+    if (this.router.top()?.name !== 'screen') return; // a dialogue is open: the dungeon must not walk behind it
+    if (e.repeat && this.flow.screen !== 'dungeon') return;
+    // Screens not yet moved onto the router keep their own key handling for now.
     const s = this.flow.screen;
     if (s === 'combat') { this.combat?.key(e); return; }
-    if (s === 'settings' && e.key === 'Escape') { this.root.querySelector('.overlay')?.remove(); this.dispatch({ type: 'closeSettings' }); return; }
     if (s !== 'dungeon' || !this.controller) return;
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
     const map: Record<string, Command> = {
       ArrowUp: 'fwd', w: 'fwd', W: 'fwd', ArrowDown: 'back', s: 'back', S: 'back', ArrowLeft: 'turnLeft', a: 'turnLeft', A: 'turnLeft',
       ArrowRight: 'turnRight', d: 'turnRight', D: 'turnRight', q: 'left', Q: 'left', e: 'right', E: 'right', r: 'up', R: 'up', f: 'down', F: 'down',
@@ -479,6 +497,5 @@ export class App {
     else if (e.key === 'x' || e.key === 'X') this.controller.look(-0.15);
     else if (e.key === '[') this.setMapZ(this.mapZ - 1);
     else if (e.key === ']') this.setMapZ(this.mapZ + 1);
-    else if (e.key === 'Escape') this.dispatch({ type: 'openSettings' });
   }
 }

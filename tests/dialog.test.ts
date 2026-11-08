@@ -48,6 +48,21 @@ describe('pure list keys', () => {
   });
 });
 
+describe('hotkey rows', () => {
+  test('a row with a key is picked by that letter, in either case, and printed with it; numbers do not pick keyed rows', async () => {
+    const keyed: ListRow[] = [{ label: 'Save to file', key: 's' }, { label: 'Load from file', key: 'l' }, { label: 'Quit', key: 'q', disabled: true }];
+    const st2: ListState = { rows: keyed, index: 0 };
+    expect(listKey(st2, 'L').outcome).toEqual({ kind: 'confirm', index: 1 });
+    expect(listKey(st2, 'q').outcome.kind).toBe('ignored');
+    expect(listKey(st2, '2').outcome.kind).toBe('ignored');
+    const h = host();
+    const p = openList(h, { title: 'System', rows: keyed });
+    expect(h.layer.textContent).toContain('S) Save to file');
+    h.router.handle('s');
+    expect(await p).toBe(0);
+  });
+});
+
 describe('dialogues', () => {
   test('openList resolves the chosen index through the router, null on Escape, and calls onMove on each move', async () => {
     const h = host();

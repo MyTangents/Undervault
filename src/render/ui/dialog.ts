@@ -4,7 +4,8 @@ import { labelOf } from './keys';
 import type { KeyCommand, KeyRouter } from './keys';
 
 export interface UiHost { router: KeyRouter; layer: HTMLElement }
-export interface ListRow { label: string; detail?: string; disabled?: boolean }
+/** `key` is an optional letter that picks the row (printed as `S) Save`); rows without one are picked by number. */
+export interface ListRow { label: string; detail?: string; disabled?: boolean; key?: string }
 export interface ListState { rows: ListRow[]; index: number }
 export type ListOutcome =
   | { kind: 'moved' }
@@ -33,7 +34,9 @@ export function listKey(s: ListState, key: string, pageSize = 8): { state: ListS
     return s.rows[s.index].disabled ? same : { state: s, outcome: { kind: 'confirm', index: s.index } };
   }
   const k = key.toLowerCase();
-  const i = k.length === 1 ? ROW_KEYS.indexOf(k) : -1;
+  const hot = k.length === 1 ? s.rows.findIndex((r) => r.key?.toLowerCase() === k) : -1;
+  if (hot >= 0) return s.rows[hot].disabled ? same : { state: { ...s, index: hot }, outcome: { kind: 'confirm', index: hot } };
+  const i = k.length === 1 && !s.rows.some((r) => r.key) ? ROW_KEYS.indexOf(k) : -1;
   if (i >= 0 && i < n && !s.rows[i].disabled) return { state: { ...s, index: i }, outcome: { kind: 'confirm', index: i } };
   return same;
 }
@@ -77,7 +80,7 @@ export function openList(host: UiHost, spec: ListSpec): Promise<number | null> {
           onclick: () => { if (!r.disabled) finish(i); },
         },
         h('span', { class: 'mark' }, i === state.index ? '>' : ' '),
-        h('span', { class: 'lbl' }, `${rowKey(i)}) ${r.label}`),
+        h('span', { class: 'lbl' }, `${r.key ? r.key.toUpperCase() : rowKey(i)}) ${r.label}`),
         r.detail ? h('span', { class: 'det' }, r.detail) : null),
       ),
     );
