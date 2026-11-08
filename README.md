@@ -33,10 +33,13 @@ npm run dev     # play locally (http://localhost:5173)
 npm test        # the rules and content tests
 npm run sim     # balance tables: random encounters by depth, and the set-piece fights by party level
 npm run build   # a static site in dist/, ready for any web host
+npm run deploy  # build and publish to the gh-pages branch (GitHub Pages)
 ```
 
-Node 24 or newer. The built site uses relative paths, so `dist/` works from any folder or host. A sample GitHub Pages
-workflow is in `docs/dev/pages.yml.example`.
+Node 24 or newer. The built site uses relative paths, so `dist/` works from any folder or host. The game is published at
+https://mytangents.github.io/Undervault/ from the `gh-pages` branch; `npm run deploy` rebuilds it and replaces that branch
+(it never touches `main`). `docs/dev/pages.yml.example` is a workflow that would do the same on every push, for when the
+GitHub login has permission to add workflows.
 
 ## How it is built
 
