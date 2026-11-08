@@ -50,6 +50,17 @@ export function defaultStore(): StorageLike {
 
 export const exportSave = (s: SaveData): string => JSON.stringify(s, null, 1);
 
+const NUMBERS = ['level', 'xp', 'hp', 'maxHp'] as const;
+function validMember(m: unknown): boolean {
+  const c = m as Record<string, unknown> | null;
+  if (!c || typeof c !== 'object') return false;
+  if (typeof c.id !== 'string' || typeof c.name !== 'string' || typeof c.classId !== 'string' || typeof c.raceId !== 'string') return false;
+  if (!c.stats || typeof c.stats !== 'object') return false;
+  for (const k of NUMBERS) if (typeof c[k] !== 'number') return false;
+  for (const k of ['charges', 'maxCharges', 'known', 'inventory', 'status', 'techniques']) if (!Array.isArray(c[k])) return false;
+  return !!c.equipped && typeof c.equipped === 'object';
+}
+
 /** Checks and, if needed, upgrades a save's text. Never throws. */
 function parseSave(text: string): { data: SaveData | null; message?: string } {
   let raw: unknown;
@@ -61,8 +72,12 @@ function parseSave(text: string): { data: SaveData | null; message?: string } {
   if (typeof d.version !== 'number') return { data: null, message: 'The save has no version, so it cannot be read.' };
   if (d.version > SAVE_VERSION) return { data: null, message: 'This save is from a newer version of the game. Update the game to open it.' };
   if (!d.party || !Array.isArray(d.party.members)) return { data: null, message: 'The save is missing its party.' };
-  if (!d.chronicle || !d.position || !d.settings) return { data: null, message: 'The save is incomplete and cannot be read.' };
-  return { data: d as SaveData };
+  const bad = d.party.members.findIndex((m) => !validMember(m));
+  if (bad >= 0) return { data: null, message: `Party member ${bad + 1} in the save is incomplete, so it cannot be read.` };
+  if (!d.chronicle || !Array.isArray(d.chronicle.entries) || !d.position || typeof d.position.levelId !== 'string' || !d.position.pos || !d.settings) {
+    return { data: null, message: 'The save is incomplete and cannot be read.' };
+  }
+  return { data: { ...(d as SaveData), automaps: d.automaps ?? {} } };
 }
 
 export const importSave = (text: string): { data: SaveData | null; message?: string } => parseSave(text);
@@ -74,6 +89,11 @@ export function saveGame(s: SaveData, store: StorageLike = defaultStore()): { ok
   } catch {
     return { ok: false, message: 'Could not save to browser storage (it may be blocked or full). Use Save to file instead.' };
   }
+}
+
+/** Removes the browser save (used when a party is wiped: the dead stay dead). */
+export function clearSave(store: StorageLike = defaultStore()): { ok: boolean } {
+  try { store.removeItem(SAVE_KEY); return { ok: true }; } catch { return { ok: false }; }
 }
 
 export function loadGame(store: StorageLike = defaultStore()): { data: SaveData | null; message?: string } {

@@ -52,7 +52,8 @@ const POOL: RecruitSpec[] = [
 export function recruits(day: number, rng: Rng, party: Party): Character[] {
   const hasGood = party.members.some((m) => m.alignment === 'good');
   const hasEvil = party.members.some((m) => m.alignment === 'evil');
-  const ok = POOL.filter((s) => !(hasGood && s.alignment === 'evil') && !(hasEvil && s.alignment === 'good'));
+  const inParty = new Set(party.members.map((m) => m.name));
+  const ok = POOL.filter((s) => !inParty.has(s.name) && !(hasGood && s.alignment === 'evil') && !(hasEvil && s.alignment === 'good'));
   const picks = [...ok];
   // a seeded shuffle (Fisher-Yates) keeps the choice repeatable; callers seed it from the day
   for (let i = picks.length - 1; i > 0; i--) { const j = rng.int(0, i); [picks[i], picks[j]] = [picks[j], picks[i]]; }

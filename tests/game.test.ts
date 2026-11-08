@@ -169,3 +169,25 @@ describe('the inn and saving', () => {
     expect(back.onArrive({ x: 27, y: 3, z: 0 }, 0, 1).some((r) => r.kind === 'discovery')).toBe(false);
   });
 });
+
+describe('review fixes: the dead stay dead, and bad saves are refused', () => {
+  test('a party with nobody alive cannot enter the dungeon', () => {
+    const g = newGame();
+    g.state.party = { ...g.state.party, members: g.state.party.members.map((m) => ({ ...m, hp: 0, dead: true })) };
+    g.returnToTown();
+    expect(() => g.enterDungeon()).toThrow(/alive|nobody/i);
+  });
+
+  test('a round committed mid-fight keeps its deaths in the save, so closing the tab cannot undo them', () => {
+    const g = newGame();
+    const fallen = { ...g.state.party, members: g.state.party.members.map((m, i) => (i === 2 ? { ...m, hp: 0, dead: true } : m)) };
+    g.commitRound(fallen);
+    expect(g.toSave().party.members[2].dead).toBe(true);
+  });
+
+  test('a save that names a level this build does not have is refused with a clear error', () => {
+    const data = newGame().toSave();
+    data.position.levelId = 'a-level-from-the-future';
+    expect(() => Game.fromSave(data, createRng(1))).toThrow(/level/i);
+  });
+});

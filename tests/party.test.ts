@@ -96,3 +96,11 @@ describe('party', () => {
     expect(isWiped(oneLeft)).toBe(false);
   });
 });
+
+describe('review fixes: no one joins twice', () => {
+  test('a character with the same id as a member cannot be added again', () => {
+    const a = blade('Twin');
+    const p = addToParty(emptyParty(), a);
+    expect(() => addToParty(p, { ...a })).toThrow(/already/i);
+  });
+});

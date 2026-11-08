@@ -9,7 +9,7 @@ import { Game, type ArriveResult } from '../../core/game';
 import { createRng } from '../../core/rng';
 import { demoParty } from '../../core/sim';
 import { DEFAULT_SETTINGS, type Settings } from '../../core/settings';
-import { loadGame, saveGame, defaultStore } from '../../core/save';
+import { clearSave, loadGame, saveGame, defaultStore, SAVE_KEY, type SaveData } from '../../core/save';
 import { renderChronicle } from '../../core/chronicle';
 import { DISCOVERIES } from '../../core/data';
 import type { TaleDef, Stats, Alignment } from '../../core/types';
@@ -123,15 +123,35 @@ export class App {
     if (!file) return;
     const r = await loadFromFile(file);
     if (!r.data) { this.toast(r.message ?? 'That file could not be loaded.'); return; }
-    this.adopt(Game.fromSave(r.data, createRng(Date.now() & 0xffffff)));
-    this.toast('Loaded. Welcome back.');
+    if (this.tryLoad(r.data)) this.toast('Loaded. Welcome back.');
+  }
+
+  /** Loads a save into a running game. Never throws: a save this build cannot use gives a message instead. */
+  tryLoad(data: SaveData): boolean {
+    try {
+      this.adopt(Game.fromSave(data, createRng(Date.now() & 0xffffff)));
+      return true;
+    } catch (e) {
+      this.toast(`That save could not be used (${e instanceof Error ? e.message : 'unknown problem'}).`);
+      return false;
+    }
   }
 
   private adopt(g: Game): void {
+    // drop any live view built for the previous game, so the new one gets its own level and position
+    this.teardownDungeon();
+    this.combat?.destroy();
+    this.combat = null;
+    this.root.querySelector('.overlay')?.remove();
     this.game = g;
     this.townPlace = 'tavern';
     this.townMsg = '';
     this.recruited = new Set();
+    if (g.isOver()) { // a wiped party goes to the Roll, not into a dungeon where nothing can happen
+      this.flow = { ...this.flow, screen: 'gameover', under: null, hasGame: true };
+      this.render();
+      return;
+    }
     this.dispatch({ type: 'continue', inTown: g.state.inTown });
     if (!g.state.inTown) this.autosave();
   }
@@ -149,13 +169,17 @@ export class App {
   continueGame(): void {
     const r = loadGame();
     if (!r.data) { this.toast(r.message ?? 'There is no saved game in this browser.'); return; }
-    this.adopt(Game.fromSave(r.data, createRng(Date.now() & 0xffffff)));
+    this.tryLoad(r.data);
   }
 
   enterDungeon(): void {
     const g = this.game!;
-    if (g.state.party.members.length === 0) { this.townMsg = 'You cannot go down alone, or at all. Recruit someone.'; this.townMsgBad = true; this.render(); return; }
-    g.enterDungeon();
+    try { g.enterDungeon(); } catch (e) {
+      this.townMsg = e instanceof Error ? e.message : 'The party cannot go down.';
+      this.townMsgBad = true;
+      this.render();
+      return;
+    }
     this.audio.play('door');
     this.audio.play('drone');
     this.dispatch({ type: 'enterDungeon' });
@@ -165,7 +189,8 @@ export class App {
   combatDone(outcome: 'won' | 'fled' | 'wiped'): void {
     this.combat?.destroy();
     this.combat = null;
-    this.autosave();
+    if (outcome === 'wiped') clearSave(); // the dead stay dead: no saved game to reload them from
+    else this.autosave();
     this.dispatch({ type: 'combatEnd', outcome });
   }
 
@@ -205,7 +230,7 @@ export class App {
 
   /* ---------------------------------------------------------------- title */
   private titleScreen(): HTMLElement {
-    const hasSave = (() => { try { return !!defaultStore().getItem('undervault.save.v1'); } catch { return false; } })();
+    const hasSave = (() => { try { return !!defaultStore().getItem(SAVE_KEY); } catch { return false; } })();
     return h('div', { class: 'screen title' },
       h('h1', null, TITLE_WORD),
       h('h2', null, SUBTITLE),

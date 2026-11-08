@@ -72,12 +72,14 @@ export class Game {
 
   static fromSave(data: SaveData, rng: Rng): Game {
     const automaps: Record<string, Automap> = {};
-    for (const [id, text] of Object.entries(data.automaps)) automaps[id] = deserializeAutomap(text);
-    return new Game({
+    for (const [id, text] of Object.entries(data.automaps ?? {})) automaps[id] = deserializeAutomap(text);
+    const game = new Game({
       party: data.party, chronicle: data.chronicle, day: data.day, settings: data.settings,
       levelId: data.position.levelId, pos: data.position.pos, facing: data.position.facing, automaps,
       triggered: data.triggered ?? [], closed: data.closed ?? [], inTown: data.inTown ?? false, over: false,
     }, rng);
+    game.level(); // fails early, with a clear message, if the save names a level this build does not have
+    return game;
   }
 
   toSave(): SaveData {
@@ -119,6 +121,7 @@ export class Game {
   returnToTown(): void { this.state.inTown = true; }
 
   enterDungeon(): void {
+    if (this.isOver() || !this.state.party.members.some(isActive)) throw new Error('Nobody alive is fit to go down. The dead stay dead.');
     const l = this.level(FIRST_LEVEL);
     this.state.inTown = false;
     this.enterLevel(FIRST_LEVEL, { ...l.start });
@@ -142,6 +145,9 @@ export class Game {
   private note(kind: 'combat' | 'death' | 'discovery' | 'event' | 'town', text: string, cause?: string): void {
     this.state.chronicle = addEntry(this.state.chronicle, { day: this.state.day, kind, text, cause });
   }
+
+  /** Records the party as it stands mid-fight, so a death is in the save the moment it happens. */
+  commitRound(party: Party): void { this.state.party = party; }
 
   /** The party stepped onto `pos` (having fallen `fell` storeys to get there). Returns what happens there, in order. */
   onArrive(pos: Pos, fell: number, facing: number): ArriveResult[] {

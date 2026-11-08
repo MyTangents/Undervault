@@ -88,3 +88,30 @@ describe('save files (play on any device)', () => {
     expect(saveFilename(odd)).toMatch(/^[a-z0-9.-]+$/);
   });
 });
+
+describe('review fixes: save hygiene', () => {
+  test('clearSave removes the browser save, so a dead party cannot be reloaded', async () => {
+    const { clearSave } = await import('../src/core/save');
+    const store = memory();
+    saveGame(data(), store);
+    expect(loadGame(store).data).not.toBeNull();
+    expect(clearSave(store).ok).toBe(true);
+    expect(loadGame(store)).toEqual({ data: null });
+    expect(clearSave(broken).ok).toBe(false);
+  });
+
+  test('a save whose party members are missing required fields is refused with a message', () => {
+    const d = JSON.parse(exportSave(data()));
+    delete d.party.members[0].stats;
+    const r = importSave(JSON.stringify(d));
+    expect(r.data).toBeNull();
+    expect(r.message).toMatch(/member|incomplete/i);
+  });
+
+  test('a save from before automaps were kept still loads, with an empty map', () => {
+    const d = JSON.parse(exportSave(data()));
+    delete d.automaps;
+    const r = importSave(JSON.stringify(d));
+    expect(r.data?.automaps).toEqual({});
+  });
+});

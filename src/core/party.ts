@@ -83,6 +83,7 @@ function normalise(p: Party): Party {
 
 export function addToParty(p: Party, c: Character): Party {
   if (p.members.length >= PARTY_SIZE) throw new Error('the party is full (six members)');
+  if (p.members.some((m) => m.id === c.id)) throw new Error(`${c.name} is already in the party`);
   const hasGood = p.members.some((m) => m.alignment === 'good') || c.alignment === 'good';
   const hasEvil = p.members.some((m) => m.alignment === 'evil') || c.alignment === 'evil';
   if (hasGood && hasEvil) throw new Error('good and evil cannot share a party (alignment clash)');

@@ -146,3 +146,16 @@ describe('information and tales', () => {
     expect(recruits(1, createRng(1), w).length).toBeGreaterThan(0);
   });
 });
+
+describe('review fixes: recruiting', () => {
+  test('someone already in the party is never offered again, whatever the shuffle', () => {
+    const base = party();
+    for (let seed = 1; seed <= 20; seed++) {
+      const hired = recruits(1, createRng(seed), emptyParty())[0];
+      const p = addToParty(base, hired);
+      for (let again = 100; again < 140; again++) {
+        expect(recruits(1, createRng(again), p).some((c) => c.name === hired.name), ).toBe(false);
+      }
+    }
+  });
+});

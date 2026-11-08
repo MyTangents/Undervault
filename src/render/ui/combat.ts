@@ -221,6 +221,9 @@ export class CombatScreen {
       if (groupLiving(this.state.groups[i]) === 0 && this.initial[i] > 0 && this.anim.dyingGroup !== i && i === this.selected) { this.anim.dyingAt = performance.now(); this.anim.dyingGroup = i; }
     }
     if (res.outcome === 'ongoing') {
+      // save the party as it stands now: a death is permanent the moment it happens, even if the tab is closed
+      this.game.commitRound(this.state.party);
+      this.app.autosave();
       if (groupLiving(this.state.groups[this.selected]) === 0) this.selected = this.firstLiving();
       this.fillDefaults();
       this.busy = false;
