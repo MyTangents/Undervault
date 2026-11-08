@@ -5,7 +5,7 @@ import { CLASSES, RACES } from '../src/core/data';
 import type { Alignment } from '../src/core/types';
 import { setCanvasFactory } from '../src/render/monster/picture';
 import {
-  PORTRAIT_H, PORTRAIT_W, faceNumber, getPortrait, portraitForCharacter,
+  PORTRAIT_H, PORTRAIT_W, faceNumber, getPortrait, portraitForCharacter, portraitThumb,
 } from '../src/render/portrait';
 import type { PortraitSpec, PortraitState } from '../src/render/portrait';
 
@@ -81,5 +81,26 @@ describe('adventurer faces', () => {
     const spec = portraitForCharacter({ id: 'weird', name: 'Nobody Known', raceId: 'human', classId: 'blade', alignment: 'neutral' });
     expect(colours(pixels(spec))).toBeGreaterThanOrEqual(8);
     expect(sha(pixels(spec))).toBe(sha(pixels(spec)));
+  });
+});
+
+describe('portrait life and thumbnails', () => {
+  test('speaking differs from silent at the same time, and two speaking frames 0.15s apart differ', () => {
+    const quiet = sha(pixels(adv(), 1.2));
+    const talk = sha(pixels(adv(), 1.2, { speaking: true }));
+    expect(talk).not.toBe(quiet);
+    expect(sha(pixels(adv(), 1.35, { speaking: true }))).not.toBe(talk);
+  });
+
+  test('portraitThumb is 32x40, returns the same canvas for the same input, and a dead thumb differs from a living one', () => {
+    const a = portraitThumb(adv(), calm);
+    expect([a.width, a.height]).toEqual([32, 40]);
+    expect(portraitThumb(adv(), calm)).toBe(a);
+    expect(portraitThumb(adv(), { ...calm, damage: 0.1 })).toBe(a); // damage rounds to the nearest quarter
+    const dead = portraitThumb(adv(), { ...calm, dead: true });
+    expect(dead).not.toBe(a);
+    const px = (c: HTMLCanvasElement) => (c.getContext('2d') as CanvasRenderingContext2D).getImageData(0, 0, 32, 40).data;
+    expect(sha(px(dead))).not.toBe(sha(px(a)));
+    expect(colours(px(a))).toBeGreaterThan(8);
   });
 });

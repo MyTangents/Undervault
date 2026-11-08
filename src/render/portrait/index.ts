@@ -1,4 +1,4 @@
-import { ShadedPicture } from '../monster/picture';
+import { ShadedPicture, newCanvas } from '../monster/picture';
 import { makeRamp } from '../monster/painters';
 import type { RGB } from '../monster/picture';
 import { painterFor } from './faces';
@@ -34,4 +34,28 @@ export function getPortrait(spec: PortraitSpec): Portrait {
     cache.set(key, p);
   }
   return p;
+}
+
+export const THUMB_W = 32;
+export const THUMB_H = 40;
+const thumbs = new Map<string, HTMLCanvasElement>();
+
+/** A 32x40 still of a face for the roster strip, cached by spec and the state flags that change how it looks. */
+export function portraitThumb(spec: PortraitSpec, s: PortraitState): HTMLCanvasElement {
+  const key = `${specKey(spec)}|${s.dead ? 'x' : 'o'}|${Math.round(s.damage * 4)}|${Math.round(s.dying * 4)}`;
+  let c = thumbs.get(key);
+  if (c) return c;
+  c = newCanvas(THUMB_W, THUMB_H);
+  thumbs.set(key, c);
+  try {
+    const big = newCanvas(PORTRAIT_W, PORTRAIT_H);
+    const bg = big.getContext('2d') as CanvasRenderingContext2D | null;
+    const g = c.getContext('2d') as CanvasRenderingContext2D | null;
+    if (bg && g) {
+      getPortrait(spec).draw(bg, 0.6, { ...s, damage: Math.round(s.damage * 4) / 4, dying: Math.round(s.dying * 4) / 4, speaking: false });
+      g.imageSmoothingEnabled = true;
+      g.drawImage(big as unknown as CanvasImageSource, 0, 0, THUMB_W, THUMB_H);
+    }
+  } catch { /* a canvas that cannot draw leaves the thumb blank */ }
+  return c;
 }

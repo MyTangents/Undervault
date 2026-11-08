@@ -44,6 +44,8 @@ let makeCanvas: CanvasFactory = (w, h) => {
 };
 /** Tests run without a DOM and pass a Node canvas in here. */
 export const setCanvasFactory = (f: CanvasFactory): void => { makeCanvas = f; };
+/** A new canvas from the same factory the pictures use (a Node canvas in tests). */
+export const newCanvas = (w: number, h: number): HTMLCanvasElement => makeCanvas(w, h);
 
 function seeded(seed: number): () => number {
   let a = seed >>> 0;
