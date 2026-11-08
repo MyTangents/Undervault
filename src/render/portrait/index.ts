@@ -1,7 +1,7 @@
 import { ShadedPicture } from '../monster/picture';
 import { makeRamp } from '../monster/painters';
 import type { RGB } from '../monster/picture';
-import { adventurerPainter } from './faces';
+import { painterFor } from './faces';
 import { PORTRAIT_H, PORTRAIT_W, specKey } from './spec';
 import type { PortraitSpec, PortraitState } from './spec';
 
@@ -23,7 +23,7 @@ export function getPortrait(spec: PortraitSpec): Portrait {
   const key = specKey(spec);
   let p = cache.get(key);
   if (!p) {
-    const painter = adventurerPainter(spec);
+    const painter = painterFor(spec);
     const live = new ShadedPicture<PortraitState>(painter, PORTRAIT_W, PORTRAIT_H);
     const grey = new ShadedPicture<PortraitState>({ ...painter, ramp: DEAD_RAMP }, PORTRAIT_W, PORTRAIT_H);
     p = {

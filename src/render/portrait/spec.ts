@@ -1,11 +1,14 @@
 import type { Alignment, Character } from '../../core/types';
 import type { PictureState } from '../monster/picture';
+import { personByName } from './people';
 
 export const PORTRAIT_W = 128;
 export const PORTRAIT_H = 160;
 
 /** The named people of Crowhithe (filled in with the recipes in people.ts). */
-export type PersonId = string;
+export type PersonId =
+  | 'dennis' | 'hobb' | 'ottoline' | 'wenna' | 'maud' | 'tamsin' | 'moss' | 'merrow' | 'pim' | 'joss' | 'gudrun'
+  | 'perrin' | 'thessaly' | 'kesk' | 'jossm' | 'hedda' | 'aldous' | 'wick';
 
 export type PortraitSpec =
   | { kind: 'person'; id: PersonId }
@@ -20,6 +23,8 @@ export function faceNumber(id: string): number {
 }
 
 export function portraitForCharacter(c: Pick<Character, 'id' | 'name' | 'raceId' | 'classId' | 'alignment'>): PortraitSpec {
+  const person = personByName(c.name);
+  if (person) return { kind: 'person', id: person };
   return { kind: 'adventurer', raceId: c.raceId, classId: c.classId, alignment: c.alignment, face: faceNumber(c.id) };
 }
 

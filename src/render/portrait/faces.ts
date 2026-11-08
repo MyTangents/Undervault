@@ -4,6 +4,8 @@
  */
 import type { Painter, RGB } from '../monster/picture';
 import { breath, ell, glow, gray, line, makeRamp, open, poly } from '../monster/painters';
+import { PEOPLE, drawBodyExtras, drawHeadExtras, emitBodyExtras } from './people';
+import type { PersonRecipe } from './people';
 import type { PortraitSpec, PortraitState } from './spec';
 
 type G = CanvasRenderingContext2D;
@@ -246,19 +248,56 @@ function emitters(g: G, look: Look, race: string, t: number, s: PortraitState): 
   if (look.mood < 0) for (const sd of [-1, 1]) glow(g, sd * (7.5 + look.eyeGap * 3.5), 62, 3, '255,60,50', 0.35 * open(t));
 }
 
-export function adventurerPainter(spec: PortraitSpec): Painter<PortraitState> {
-  const a = spec.kind === 'adventurer'
-    ? spec
-    : { kind: 'adventurer' as const, raceId: 'human', classId: 'blade', alignment: 'neutral' as const, face: spec.id.length * 7919 };
+const hashId = (id: string): number => { let h = 7; for (const c of id) h = (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0; return h; };
+
+/** Rotates the head group a hair around the neck and lets it rise and fall with the breath. */
+function pose(g: G, t: number, s: PortraitState, f: () => void): void {
+  const br = s.dead ? 0 : breath(t), tilt = s.dead ? 0.05 : Math.sin(t * 0.4) * 0.025;
+  g.save(); g.translate(0, 106 + br * 0.5); g.rotate(tilt); g.translate(0, -106);
+  f();
+  g.restore();
+}
+
+function personPainter(r: PersonRecipe): Painter<PortraitState> {
+  const look: Look = { ...lookFor(r.race, hashId(r.id), r.mood), ...r.look, mood: r.mood };
+  const gear = r.gear ?? 'none';
+  const covered = gear !== 'none' && gear !== 'cutpurse';
+  return {
+    id: `person-${r.id}`,
+    ramp: makeRamp(r.ramp, 12),
+    paint(g, t, s) {
+      shoulders(g, gear, s.dead ? 0 : breath(t));
+      poly(g, [[-9, 96], [9, 96], [12, 118], [-12, 118]], 138);
+      pose(g, t, s, () => {
+        gearBack(g, gear);
+        hairOf(g, look, covered);
+        features(g, look, r.race, t, s);
+        drawHeadExtras(g, r.extras, look, t);
+        gearFront(g, gear, t, look);
+      });
+      drawBodyExtras(g, r.extras, t, s);
+    },
+    emit(g, t, s) {
+      pose(g, t, s, () => emitters(g, look, r.race, t, s));
+      emitBodyExtras(g, r.extras, t, s);
+    },
+  };
+}
+
+/** The painter for any portrait spec: a named person's recipe, or a face grown from race, class, alignment and number. */
+export function painterFor(spec: PortraitSpec): Painter<PortraitState> {
+  if (spec.kind === 'person') {
+    const r = PEOPLE[spec.id];
+    if (r) return personPainter(r);
+    return adventurerPainter({ kind: 'adventurer', raceId: 'human', classId: 'blade', alignment: 'neutral', face: hashId(spec.id) });
+  }
+  return adventurerPainter(spec);
+}
+
+function adventurerPainter(a: Extract<PortraitSpec, { kind: 'adventurer' }>): Painter<PortraitState> {
   const look = lookFor(a.raceId, a.face, MOOD[a.alignment] ?? 0);
   const ramp: RGB[] = makeRamp(RACE_RAMPS[a.raceId] ?? RACE_RAMPS.human, 12);
   const covered = a.classId !== 'cutpurse';
-  const pose = (g: G, t: number, s: PortraitState, f: () => void) => {
-    const br = s.dead ? 0 : breath(t), tilt = s.dead ? 0.05 : Math.sin(t * 0.4) * 0.025;
-    g.save(); g.translate(0, 106 + br * 0.5); g.rotate(tilt); g.translate(0, -106);
-    f();
-    g.restore();
-  };
   return {
     id: `face-${a.raceId}-${a.classId}-${a.alignment}-${a.face}`,
     ramp,
