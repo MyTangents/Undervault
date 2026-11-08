@@ -1,7 +1,7 @@
 import type { Alignment, Attr, Character, Party, Row, Stats } from './types';
 import { ATTRS } from './types';
 import type { Rng } from './rng';
-import { CLASSES, RACES } from './data';
+import { CLASSES, RACES, SPELLS } from './data';
 
 export const PARTY_SIZE = 6;
 export const FRONT_SIZE = 3;
@@ -62,7 +62,9 @@ export function createCharacter(spec: CharacterSpec, allocation: Stats, rng: Rng
     maxHp,
     charges: [casts, 0, 0, 0, 0, 0, 0],
     maxCharges: [casts, 0, 0, 0, 0, 0, 0],
-    known: [],
+    known: cls.school
+      ? SPELLS.filter((s) => s.school === cls.school && s.level === 1 && !s.discoveryId).map((s) => s.id)
+      : [],
     techniques: [],
     inventory: [],
     equipped: {},
