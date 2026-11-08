@@ -145,6 +145,38 @@ describe('after a fight', () => {
   });
 });
 
+describe('party order after a fight', () => {
+  const groups = () => [makeGroup(def('ledger-rat'), 3, createRng(1))];
+  const withFrontDead = (g: Game) => {
+    const [a] = g.state.party.members;
+    const party = { ...g.state.party, members: g.state.party.members.map((m, i) => (i === 0 ? { ...m, hp: 0, dead: true } : m)) };
+    return { party, fallen: a.name };
+  };
+
+  for (const outcome of ['won', 'fled', 'wiped'] as const) {
+    test(`after a ${outcome} fight a front-rank member who died is last, and the next member has moved up into the front rank`, () => {
+      const g = newGame();
+      const before = g.state.party.members.map((m) => m.name);
+      const { party, fallen } = withFrontDead(g);
+      g.finishEncounter({ outcome, xp: 0, gold: 0, party, groups: groups() });
+      const after = g.state.party.members;
+      expect(after.at(-1)!.name).toBe(fallen);
+      expect(after.at(-1)!.dead).toBe(true);
+      expect(after[0].name).toBe(before[1]);
+      expect(after.slice(0, 3).every((m) => m.row === 'front')).toBe(true);
+      expect(after.slice(3).every((m) => m.row === 'back')).toBe(true);
+    });
+  }
+
+  test('commitRound mid-fight leaves the order alone', () => {
+    const g = newGame();
+    const before = g.state.party.members.map((m) => m.name);
+    const { party } = withFrontDead(g);
+    g.commitRound(party);
+    expect(g.state.party.members.map((m) => m.name)).toEqual(before);
+  });
+});
+
 describe('the inn and saving', () => {
   test('resting costs a day, heals, and lets members who earned it level up', () => {
     const g = newGame();

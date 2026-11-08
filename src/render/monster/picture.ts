@@ -27,13 +27,13 @@ export interface MonsterPicture {
 
 export type RGB = [number, number, number];
 
-export interface Painter {
+export interface Painter<S extends PictureState = PictureState> {
   id: string;
   ramp: RGB[];
   /** draw the figure as a grayscale height map (brighter = nearer/higher), centred on x = 0 */
-  paint(g: CanvasRenderingContext2D, t: number, s: PictureState): void;
+  paint(g: CanvasRenderingContext2D, t: number, s: S): void;
   /** draw glowing parts (eyes, flames) in colour, with alpha as strength */
-  emit(g: CanvasRenderingContext2D, t: number, s: PictureState): void;
+  emit(g: CanvasRenderingContext2D, t: number, s: S): void;
 }
 
 type CanvasFactory = (w: number, h: number) => HTMLCanvasElement;
@@ -44,6 +44,8 @@ let makeCanvas: CanvasFactory = (w, h) => {
 };
 /** Tests run without a DOM and pass a Node canvas in here. */
 export const setCanvasFactory = (f: CanvasFactory): void => { makeCanvas = f; };
+/** A new canvas from the same factory the pictures use (a Node canvas in tests). */
+export const newCanvas = (w: number, h: number): HTMLCanvasElement => makeCanvas(w, h);
 
 function seeded(seed: number): () => number {
   let a = seed >>> 0;
@@ -68,42 +70,47 @@ function valueNoise(w: number, h: number, cell: number, seed: number): Float32Ar
   return out;
 }
 
-let grain: Float32Array, blotch: Float32Array, crack: Float32Array;
+interface Noise { grain: Float32Array; blotch: Float32Array; crack: Float32Array }
+const noiseBySize = new Map<string, Noise>();
+function noiseFor(w: number, h: number): Noise {
+  const k = `${w}x${h}`;
+  let n = noiseBySize.get(k);
+  if (!n) { n = { grain: valueNoise(w, h, 3, 11), blotch: valueNoise(w, h, 9, 23), crack: valueNoise(w, h, 6, 41) }; noiseBySize.set(k, n); }
+  return n;
+}
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 
-/** The shared shading pipeline, one instance per painter. */
-class ShadedPicture implements MonsterPicture {
-  readonly width = PICTURE_W;
-  readonly height = PICTURE_H;
+/** The shared shading pipeline, one instance per painter. Geometry derives from the size; 192x240 is the monster size. */
+export class ShadedPicture<S extends PictureState = PictureState> implements MonsterPicture {
   private hc?: HTMLCanvasElement; private bc?: HTMLCanvasElement; private ec?: HTMLCanvasElement;
 
-  constructor(private painter: Painter) {}
+  constructor(private painter: Painter<S>, readonly width: number = PICTURE_W, readonly height: number = PICTURE_H) {}
 
-  draw(ctx: CanvasRenderingContext2D, t: number, s: PictureState): void {
-    grain ??= valueNoise(PICTURE_W, PICTURE_H, 3, 11);
-    blotch ??= valueNoise(PICTURE_W, PICTURE_H, 9, 23);
-    crack ??= valueNoise(PICTURE_W, PICTURE_H, 6, 41);
-    this.hc ??= makeCanvas(PICTURE_W, PICTURE_H);
-    this.bc ??= makeCanvas(PICTURE_W, PICTURE_H);
-    this.ec ??= makeCanvas(PICTURE_W, PICTURE_H);
+  draw(ctx: CanvasRenderingContext2D, t: number, s: S): void {
+    const W = this.width, H = this.height;
+    const { grain, blotch, crack } = noiseFor(W, H);
+    const cx = W / 2, ground = H - 8, vcy = (H * 13) / 24, fadeFrom = H * 0.8125, fadeLen = H * 0.1875;
+    this.hc ??= makeCanvas(W, H);
+    this.bc ??= makeCanvas(W, H);
+    this.ec ??= makeCanvas(W, H);
     const hg = this.hc.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
     const bg = this.bc.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
     const eg = this.ec.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
     const loom = 1 + s.lunge * 0.09;
 
-    hg.fillStyle = '#000'; hg.fillRect(0, 0, PICTURE_W, PICTURE_H);
-    hg.save(); hg.translate(96, 232); hg.scale(loom, loom); hg.translate(0, -232); this.painter.paint(hg, t, s); hg.restore();
-    eg.clearRect(0, 0, PICTURE_W, PICTURE_H);
-    eg.save(); eg.translate(96, 232); eg.scale(loom, loom); eg.translate(0, -232); this.painter.emit(eg, t, s); eg.restore();
+    hg.fillStyle = '#000'; hg.fillRect(0, 0, W, H);
+    hg.save(); hg.translate(cx, ground); hg.scale(loom, loom); hg.translate(0, -ground); this.painter.paint(hg, t, s); hg.restore();
+    eg.clearRect(0, 0, W, H);
+    eg.save(); eg.translate(cx, ground); eg.scale(loom, loom); eg.translate(0, -ground); this.painter.emit(eg, t, s); eg.restore();
 
-    bg.clearRect(0, 0, PICTURE_W, PICTURE_H);
+    bg.clearRect(0, 0, W, H);
     try { bg.filter = 'blur(1.3px)'; } catch { /* a canvas without filters just skips the blur */ }
     bg.drawImage(this.hc as unknown as CanvasImageSource, 0, 0);
     try { bg.filter = 'none'; } catch { /* ignore */ }
 
-    const hd = bg.getImageData(0, 0, PICTURE_W, PICTURE_H).data;
-    const ed = eg.getImageData(0, 0, PICTURE_W, PICTURE_H).data;
-    const out = ctx.createImageData(PICTURE_W, PICTURE_H);
+    const hd = bg.getImageData(0, 0, W, H).data;
+    const ed = eg.getImageData(0, 0, W, H).data;
+    const out = ctx.createImageData(W, H);
     const od = out.data;
     const ramp = this.painter.ramp;
     const flicker = 0.5 + 0.5 * Math.sin(t * 7) * Math.sin(t * 3.1 + 1);
@@ -112,21 +119,21 @@ class ShadedPicture implements MonsterPicture {
     const lightI = 0.82 + 0.3 * flicker;
     const { hit, damage, dying } = s;
 
-    for (let y = 1; y < PICTURE_H - 1; y++) {
-      for (let x = 1; x < PICTURE_W - 1; x++) {
-        const p = y * PICTURE_W + x, i = p * 4, h = hd[i] / 255;
+    for (let y = 1; y < H - 1; y++) {
+      for (let x = 1; x < W - 1; x++) {
+        const p = y * W + x, i = p * 4, h = hd[i] / 255;
         let shade: number, burn = false, cracked = false;
         const mist = () => {
           const m = 0.5 + 0.5 * Math.sin(x * 0.045 + t * 0.35 + Math.sin(y * 0.05 - t * 0.22) * 2.2);
-          const vx = (x - 96) / 96, vy = (y - 130) / 130, vig = Math.max(0, 1 - (vx * vx + vy * vy) * 0.7);
-          return (0.05 + 0.17 * m * (0.35 + (y / PICTURE_H) * 0.65)) * vig;
+          const vx = (x - cx) / cx, vy = (y - vcy) / vcy, vig = Math.max(0, 1 - (vx * vx + vy * vy) * 0.7);
+          return (0.05 + 0.17 * m * (0.35 + (y / H) * 0.65)) * vig;
         };
         if (h < 0.03) shade = mist();
         else {
-          const dx = ((hd[i + 4] - hd[i - 4]) / 255) * 5, dy = ((hd[i + 4 * PICTURE_W] - hd[i - 4 * PICTURE_W]) / 255) * 5;
+          const dx = ((hd[i + 4] - hd[i - 4]) / 255) * 5, dy = ((hd[i + 4 * W] - hd[i - 4 * W]) / 255) * 5;
           const nl = (-dx * Lx - dy * Ly + Lz) / Math.sqrt(dx * dx + dy * dy + 1);
           shade = h * 0.5 + Math.max(0, nl) * 0.55 * lightI * (0.35 + h * 0.65) + (grain[p] - 0.5) * 0.16 * h;
-          shade *= 1 - Math.max(0, (y - 195) / 45) * 0.55;
+          shade *= 1 - Math.max(0, (y - fadeFrom) / fadeLen) * 0.55;
           if (damage > 0) {
             shade = shade * (1 - 0.22 * damage) + 0.07 * damage; // paler, flatter
             if (Math.abs(crack[p] - 0.5) < 0.012 + damage * 0.03 && blotch[p] < damage * 1.1) cracked = true;
@@ -150,8 +157,8 @@ class ShadedPicture implements MonsterPicture {
       }
     }
     // the border pixels the lighting skips: plain black
-    for (let x = 0; x < PICTURE_W; x++) { for (const y of [0, PICTURE_H - 1]) { const i = (y * PICTURE_W + x) * 4; od[i + 3] = 255; } }
-    for (let y = 0; y < PICTURE_H; y++) { for (const x of [0, PICTURE_W - 1]) { const i = (y * PICTURE_W + x) * 4; od[i + 3] = 255; } }
+    for (let x = 0; x < W; x++) { for (const y of [0, H - 1]) { const i = (y * W + x) * 4; od[i + 3] = 255; } }
+    for (let y = 0; y < H; y++) { for (const x of [0, W - 1]) { const i = (y * W + x) * 4; od[i + 3] = 255; } }
     ctx.putImageData(out, 0, 0);
   }
 }

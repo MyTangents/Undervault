@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { createRng } from '../src/core/rng';
 import type { Alignment, Party, Stats } from '../src/core/types';
 import {
-  addToParty, createCharacter, eligibleClasses, emptyParty, isWiped, rollBonusPool, setRow,
+  addToParty, createCharacter, eligibleClasses, emptyParty, isWiped, moveMember, rollBonusPool, setRow, sinkTheDead,
 } from '../src/core/party';
 
 const ZERO: Stats = { str: 0, iq: 0, pie: 0, vit: 0, agi: 0, luck: 0 };
@@ -102,5 +102,54 @@ describe('review fixes: no one joins twice', () => {
     const a = blade('Twin');
     const p = addToParty(emptyParty(), a);
     expect(() => addToParty(p, { ...a })).toThrow(/already/i);
+  });
+});
+
+describe('party order', () => {
+  const six = (): Party => {
+    let p = emptyParty();
+    for (const n of ['Ann', 'Bo', 'Cy', 'Di', 'Ed', 'Flo']) p = addToParty(p, blade(n));
+    return p;
+  };
+  const names = (p: Party) => p.members.map((m) => m.name).join(',');
+  const rows = (p: Party) => p.members.map((m) => m.row).join(',');
+  const kill = (p: Party, ...ns: string[]): Party => ({
+    ...p,
+    members: p.members.map((m) => (ns.includes(m.name) ? { ...m, hp: 0, dead: true } : m)),
+  });
+
+  test('moveMember moves a member down and up, clamps the index, keeps the others in order, and renormalises rows', () => {
+    const p = six();
+    const down = moveMember(p, p.members[0].id, 3);
+    expect(names(down)).toBe('Bo,Cy,Di,Ann,Ed,Flo');
+    expect(rows(down)).toBe('front,front,front,back,back,back');
+    const up = moveMember(down, down.members[3].id, 0);
+    expect(names(up)).toBe('Ann,Bo,Cy,Di,Ed,Flo');
+    expect(names(moveMember(p, p.members[1].id, 99))).toBe('Ann,Cy,Di,Ed,Flo,Bo');
+    expect(names(moveMember(p, p.members[4].id, -5))).toBe('Ed,Ann,Bo,Cy,Di,Flo');
+    expect(rows(moveMember(p, p.members[0].id, 5))).toBe('front,front,front,back,back,back');
+  });
+
+  test('moveMember can move a dead member and throws on an unknown id', () => {
+    const p = kill(six(), 'Ann');
+    const q = moveMember(p, p.members[0].id, 5);
+    expect(q.members[5].name).toBe('Ann');
+    expect(q.members[5].dead).toBe(true);
+    expect(() => moveMember(p, 'nobody-0000', 1)).toThrow(/no such member nobody-0000/);
+  });
+
+  test('sinkTheDead puts dead and ash below the living, keeping order within each group, and renormalises rows', () => {
+    let p = kill(six(), 'Ann', 'Di');
+    p = { ...p, members: p.members.map((m) => (m.name === 'Flo' ? { ...m, dead: true, ash: true } : m)) };
+    const q = sinkTheDead(p);
+    expect(names(q)).toBe('Bo,Cy,Ed,Ann,Di,Flo');
+    expect(rows(q)).toBe('front,front,front,back,back,back');
+  });
+
+  test('sinkTheDead with nobody dead changes nothing, and with everybody dead keeps the order', () => {
+    const p = six();
+    expect(sinkTheDead(p)).toEqual(p);
+    const all = kill(p, 'Ann', 'Bo', 'Cy', 'Di', 'Ed', 'Flo');
+    expect(names(sinkTheDead(all))).toBe('Ann,Bo,Cy,Di,Ed,Flo');
   });
 });

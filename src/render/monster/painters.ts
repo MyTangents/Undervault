@@ -312,3 +312,6 @@ export const PLACEHOLDER: Painter = {
 };
 
 export type { PictureState };
+
+/** Drawing helpers shared with the portrait painters. */
+export { gray, ell, poly, line, glow, open, breath, makeRamp };

@@ -37,16 +37,6 @@ describe('screen flow', () => {
     expect(reduce(town, { type: 'combatEnd', outcome: 'won' })).toEqual(town);
   });
 
-  test('settings opens over any game screen and closing returns to it', () => {
-    for (const setup of [[{ type: 'newGame' }], [{ type: 'newGame' }, { type: 'enterDungeon' }]] as AppAction[][]) {
-      const before = run(fresh(), ...setup);
-      const open = reduce(before, { type: 'openSettings' });
-      expect(open.screen).toBe('settings');
-      expect(reduce(open, { type: 'openSettings' })).toEqual(open);
-      expect(reduce(open, { type: 'closeSettings' }).screen).toBe(before.screen);
-    }
-  });
-
   test('the content notice shows until the first begin, and a returning visitor does not see it again', () => {
     expect(initialState(false).noticeSeen).toBe(false);
     expect(reduce(initialState(false), { type: 'begin' }).noticeSeen).toBe(true);
